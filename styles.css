@@ -103,3 +103,15 @@ td { padding: 8px; border-top: 1px solid #334155; vertical-align: top; }
   .paper td { border: 1px solid #000; color: black; }
   @page { margin: 10mm; size: A4; }
 }
+/* Spinner de carga */
+.spinner {
+  width: 50px; height: 50px; margin: 0 auto;
+  border: 5px solid rgba(255,255,255,0.3);
+  border-radius: 50%; border-top-color: #22c55e;
+  animation: spin 1s ease-in-out infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Ajuste para tabla de listado */
+#tablaListado td { font-size: 0.9rem; border-bottom: 1px solid #334155; }
+#tablaListado tr:hover { background: rgba(255,255,255,0.05); }
