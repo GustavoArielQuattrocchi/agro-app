@@ -6,7 +6,6 @@ const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const DB_NAME = 'RecetaDigitalDB';
 const DB_VERSION = 11;
 const LS_KEYS = { settings:'receta_settings', recetas:'receta_items', catalogo:'receta_catalogo' };
-const NEXT_MAP_KEY = 'nextOCMap';
 
 let db = null;
 let idbOk = true;
@@ -32,7 +31,7 @@ function openDB() {
     };
     req.onsuccess = (e) => { 
         db=e.target.result; 
-        db.onversionchange = () => { db.close(); alert("Base de datos actualizada. Recargando..."); window.location.reload(); };
+        db.onversionchange = () => { db.close(); alert("Nueva versión. Recargando..."); window.location.reload(); };
         resolve(db); 
     };
     req.onerror = () => { idbOk=false; resolve(null); };
@@ -41,40 +40,27 @@ function openDB() {
 const tx = (name, mode='readonly') => db.transaction(name, mode).objectStore(name);
 const idbOp = (req) => new Promise((res, rej) => { req.onsuccess=()=>res(req.result); req.onerror=()=>rej(req.error); });
 
-async function getSetting(key) {
-  if(!idbOk) return JSON.parse(localStorage.getItem(LS_KEYS.settings)||'{}')[key] || null;
-  return (await idbOp(tx('settings').get(key)))?.value || null;
-}
-async function setSetting(key, val) {
-  if(!idbOk) { const s=JSON.parse(localStorage.getItem(LS_KEYS.settings)||'{}'); s[key]=val; localStorage.setItem(LS_KEYS.settings, JSON.stringify(s)); return; }
-  await idbOp(tx('settings','readwrite').put({key, value:val}));
-}
 async function catAll() { return idbOk ? new Promise(r=>{const a=[]; tx('catalogo').openCursor().onsuccess=e=>{const c=e.target.result; c?(a.push(c.value),c.continue()):r(a)}}) : JSON.parse(localStorage.getItem(LS_KEYS.catalogo)||'[]'); }
 
 /* ================= LÓGICA DE NEGOCIO ================= */
-async function getNextOCForFinca(finca) {
-  const map = (await getSetting(NEXT_MAP_KEY)) || {};
-  return Number(map[String(finca).trim().toUpperCase()] || 1);
-}
-async function setNextOCForFinca(finca, n) {
-  const map = (await getSetting(NEXT_MAP_KEY)) || {};
-  map[String(finca).trim().toUpperCase()] = Math.max(1, Number(n)||1);
-  await setSetting(NEXT_MAP_KEY, map);
-}
-function displayOC(finca, oc) { return (finca && oc) ? `${finca}-${oc}` : (oc || '—'); }
 
-async function recomputeAllFincasNextOC(){
-  const all = await listRecetas();
-  const groups = {};
-  all.forEach(r => {
-    const k = String(r.finca||'').trim().toUpperCase();
-    const v = Number((r.oc||'').replace(/^0+/,''))||0;
-    groups[k] = Math.max(groups[k]||0, v);
+// CORRECCIÓN: Cálculo en tiempo real del próximo número (Sin caché)
+async function sugerirProximoOC(finca) {
+  if (!finca) return '';
+  const todas = await listRecetas(); // Trae todo lo local
+  const deEstaFinca = todas.filter(r => r.finca === finca);
+  
+  let maximo = 0;
+  deEstaFinca.forEach(r => {
+    // Convertimos "000015" a 15, ignorando basura
+    const n = parseInt(r.oc, 10);
+    if (!isNaN(n) && n > maximo) maximo = n;
   });
-  const map = (await getSetting(NEXT_MAP_KEY)) || {};
-  for(const k in groups) { if(groups[k]+1 > (map[k]||1)) map[k] = groups[k]+1; }
-  await setSetting(NEXT_MAP_KEY, map);
+
+  return String(maximo + 1).padStart(6, '0');
 }
+
+function displayOC(finca, oc) { return (finca && oc) ? `${finca}-${oc}` : (oc || '—'); }
 
 function parseQuantity(q) {
   if(!q) return {value:NaN, unit:'', kind:'liquid'};
@@ -153,25 +139,23 @@ function readItems() {
 /* ================= CRUD & SYNC ================= */
 async function saveReceta() {
   const data = getFormData();
-  
   showLoading();
 
   try {
-    // 2. Generar OC si no tiene
+    // 1. Generar OC si es nueva o 0
     let ocNum = Number(data.oc.replace(/^0+/,'')) || 0;
     if(ocNum <= 0) {
-      await recomputeAllFincasNextOC();
-      ocNum = await getNextOCForFinca(data.finca);
-      data.oc = String(ocNum).padStart(6,'0');
-      await setNextOCForFinca(data.finca, ocNum + 1);
+      // Usamos la nueva lógica directa
+      const next = await sugerirProximoOC(data.finca);
+      data.oc = next;
     }
 
-    // 3. Guardar en IDB
+    // 2. Guardar en IDB
     if(idbOk) {
-       // PARCHE ID: Si no tiene ID válido, delete property para que IDB genere uno
+       // Si no tiene ID, lo borramos para que IDB genere uno
        if (!data.id) delete data.id;
        const res = await idbOp(tx('recetas','readwrite').put(data));
-       if(!data.id) data.id = res; // Actualizar con el ID generado
+       if(!data.id) data.id = res; 
     } else {
       const ls = JSON.parse(localStorage.getItem(LS_KEYS.recetas)||'[]');
       if(!data.id) data.id = Date.now();
@@ -179,11 +163,12 @@ async function saveReceta() {
       localStorage.setItem(LS_KEYS.recetas, JSON.stringify(ls));
     }
 
-    // 4. Actualizar UI
+    // 3. Actualizar UI
     $('#oc').value = data.oc;
     $('#ocVisible').textContent = displayOC(data.finca, data.oc);
     if(data.id) $('#oc').dataset.id = data.id;
     
+    // 4. Aprender productos
     data.items.forEach(it => {
       if(idbOk) tx('catalogo','readwrite').put({producto:it.producto, ia:it.ingredienteActivo, presentacion:it.presentacion, dosisHa:it.dosisHa});
     });
@@ -191,7 +176,6 @@ async function saveReceta() {
     // 5. Sync Nube
     await syncToCloud(data);
 
-    // 6. Fin
     hideLoading();
 
   } catch (error) {
@@ -237,19 +221,18 @@ async function syncToCloud(rec) {
   // B. BAJAR
   setStatus('cloud', 'Descargando...', '#38bdf8');
   await downloadFromCloud();
-
   setStatus('cloud', 'Sincronizado', '#22c55e');
 }
 
 async function downloadFromCloud() {
+  // Descargar todo de la nube
   const { data: orders, error } = await supa.from('order_cura').select('*, order_item(*)');
   if(error) { console.error("Error bajando:", error); return; }
-  
   if(!orders || orders.length === 0) return;
 
+  // Mapa local para evitar colisiones
   const currentLocals = await listRecetas();
   const mapLocals = new Map();
-  // Mapa por Finca + OC para encontrar duplicados
   currentLocals.forEach(r => mapLocals.set(`${r.finca}|${r.oc}`, r.id));
 
   const txRW = db.transaction('recetas', 'readwrite');
@@ -274,12 +257,11 @@ async function downloadFromCloud() {
       }))
     };
 
-    // PARCHE FINAL: Si el ID existe y es valido, úsalo. Si no, BORRA la propiedad id
+    // Validación de ID para evitar errores "DataError"
     if (existingId && typeof existingId === 'number' && !isNaN(existingId)) {
       localFormat.id = existingId;
     } else {
-      // Importante: No enviar id: undefined o id: null. Borrar la key.
-      delete localFormat.id; 
+      delete localFormat.id; // Deja que IDB cree uno nuevo
     }
     
     store.put(localFormat);
@@ -345,7 +327,7 @@ async function renderListado() {
 function getFormData() {
   let rawId = $('#oc').dataset.id;
   let safeId = undefined;
-  // Validación estricta
+  // Validación estricta para no romper la BD
   if (rawId && !isNaN(rawId) && Number(rawId) > 0) {
       safeId = Number(rawId);
   }
@@ -374,7 +356,7 @@ function setForm(r) {
   (r.items||[]).forEach(addItem);
   $('#ocVisible').textContent = displayOC(r.finca, r.oc);
   
-  // Limpieza de ID
+  // IDs y Propiedad
   if(r.id) $('#oc').dataset.id = r.id;
   else delete $('#oc').dataset.id;
 
@@ -391,12 +373,20 @@ function setStatus(type, text, color) {
 }
 
 // 1. NUEVA
-$('#btnNueva').onclick = () => { 
+$('#btnNueva').onclick = async () => { 
     setForm({items:[]}); 
     $('#oc').value=''; 
     delete $('#oc').dataset.id; 
     delete $('#oc').dataset.owner;
     $('#ocVisible').textContent='—'; 
+    
+    // Sugerencia inmediata si hay finca
+    const finca = $('#finca').value;
+    if(finca) {
+        const next = await sugerirProximoOC(finca);
+        $('#oc').value = next;
+        $('#ocVisible').textContent = displayOC(finca, next);
+    }
 };
 
 // 2. GUARDAR (CON BLOQUEO)
@@ -417,10 +407,8 @@ $('#btnGuardar').onclick = async () => {
 
 // 3. SYNC MANUAL
 $('#btnSync').onclick = async () => {
-    // Permitir sync vacío para bajar datos
     showLoading();
     try {
-        // Si hay datos en pantalla, sube. Si no, solo descarga
         const hayDatos = $('#finca').value;
         if(hayDatos) await syncToCloud(getFormData());
         else {
@@ -428,7 +416,7 @@ $('#btnSync').onclick = async () => {
              await downloadFromCloud();
              setStatus('cloud', 'Sincronizado', '#22c55e');
         }
-        setTimeout(() => { hideLoading(); alert('✅ Sincronización completa.'); }, 500);
+        setTimeout(() => { hideLoading(); alert('✅ Sync completado.'); }, 500);
     } catch(e) {
         hideLoading();
         alert('❌ Error: ' + e.message);
@@ -438,7 +426,13 @@ $('#btnSync').onclick = async () => {
 // 4. ITEMS & CAMBIOS
 $('#addItem').onclick = () => addItem();
 $('#clearItems').onclick = () => { $('#items tbody').innerHTML=''; addItem(); };
-$('#finca').onchange = async (e) => { const n = await getNextOCForFinca(e.target.value); $('#oc').value = String(n).padStart(6,'0'); $('#ocVisible').textContent = displayOC(e.target.value, $('#oc').value); };
+
+// Cambio Finca: Calcula ID real
+$('#finca').onchange = async (e) => { 
+    const n = await sugerirProximoOC(e.target.value); 
+    $('#oc').value = n; 
+    $('#ocVisible').textContent = displayOC(e.target.value, n); 
+};
 $('#manejo').onchange = (e) => { if(e.target.value === 'Orgánico') document.body.classList.add('organic'); else document.body.classList.remove('organic'); };
 
 // 5. LISTADO
@@ -490,6 +484,7 @@ $('#btnLogout').onclick = async () => {
       $('#btnLogout').style.display='inline-block'; 
   }
 })();
+
 
 
 
