@@ -30,7 +30,12 @@ function openDB() {
       if(!udb.objectStoreNames.contains('settings')) udb.createObjectStore('settings',{ keyPath:'key' });
       if(!udb.objectStoreNames.contains('catalogo')) udb.createObjectStore('catalogo',{keyPath:'producto'});
     };
-    req.onsuccess = (e) => { db=e.target.result; resolve(db); };
+    req.onsuccess = (e) => { 
+        db=e.target.result; 
+        // Manejo de cierres inesperados
+        db.onversionchange = () => { db.close(); alert("Nueva versión detectada. Recarga la página."); };
+        resolve(db); 
+    };
     req.onerror = () => { idbOk=false; resolve(null); };
   });
 }
@@ -174,11 +179,8 @@ async function saveReceta() {
     $('#oc').value = data.oc;
     $('#ocVisible').textContent = displayOC(data.finca, data.oc);
     
-    // Guardar nuevo ID generado si venía vacío
-    if(!data.id) {
-       // Opcional: Podríamos recargar el registro recién guardado, 
-       // pero para el flujo actual basta con dejarlo así hasta recargar.
-    }
+    // Guardar ID
+    if(!data.id) { /* Podríamos recargar aquí */ }
     
     data.items.forEach(it => {
       if(idbOk) tx('catalogo','readwrite').put({producto:it.producto, ia:it.ingredienteActivo, presentacion:it.presentacion, dosisHa:it.dosisHa});
@@ -193,7 +195,7 @@ async function saveReceta() {
   } catch (error) {
     hideLoading();
     console.error(error);
-    alert('Guardado en local, pero falló la nube: ' + error.message);
+    alert('Guardado LOCAL OK, pero error Nube: ' + error.message);
   }
 }
 
@@ -238,45 +240,56 @@ async function syncToCloud(rec) {
 }
 
 async function downloadFromCloud() {
-  const { data: orders, error } = await supa
-    .from('order_cura')
-    .select('*, order_item(*)');
-
+  // 1. Descargar de la nube
+  const { data: orders, error } = await supa.from('order_cura').select('*, order_item(*)');
   if(error) { console.error("Error bajando:", error); return; }
+  
+  if(!orders || orders.length === 0) return;
 
-  if(orders && orders.length > 0) {
-    const txRW = db.transaction('recetas', 'readwrite').objectStore('recetas');
-    
-    for (const o of orders) {
-      const localFormat = {
-        owner_id: o.owner_id, // IMPORTANTÍSIMO: Guardamos el dueño
-        oc: o.oc, fecha: o.fecha, finca: o.finca, cultivo: o.cultivo, manejo: o.manejo,
-        tecnico: o.tecnico, tractorista: o.tractorista, tractor: o.tractor,
-        maquinaria: o.maquinaria, 
-        volumenMaquinaria: o.vol_maquinaria, 
-        volumenAplicacion: o.vol_aplicacion,
-        cuartel: o.cuartel, indicaciones: o.indicaciones,
-        updated_at: o.updated_at,
-        items: (o.order_item || []).map(it => ({
-            producto: it.producto, ingredienteActivo: it.ia, presentacion: it.presentacion,
-            dosisHa: it.dosis_ha, dosisMaquinada: it.dosis_maquinada, obs: it.obs
-        }))
-      };
+  // 2. Preparar el MAPA de lo que ya tenemos localmente (Para evitar consultar la BD en el bucle)
+  //    Esto evita el error "Transaction closing" al usar await dentro de la tx
+  const currentLocals = await listRecetas();
+  const mapLocals = new Map();
+  // Clave única: FINCA + OC
+  currentLocals.forEach(r => mapLocals.set(`${r.finca}|${r.oc}`, r.id));
 
-      const existing = await new Promise(resolve => {
-        const req = txRW.index('by_finca_oc').get([o.finca, o.oc]);
-        req.onsuccess = () => resolve(req.result);
-        req.onerror = () => resolve(null);
-      });
+  // 3. Abrir transacción UNA SOLA VEZ
+  const txRW = db.transaction('recetas', 'readwrite');
+  const store = txRW.objectStore('recetas');
 
-      if (existing) {
-        localFormat.id = existing.id;
-        txRW.put(localFormat);
-      } else {
-        txRW.put(localFormat);
-      }
+  // 4. Bucle rápido síncrono
+  orders.forEach(o => {
+    const key = `${o.finca}|${o.oc}`;
+    const existingId = mapLocals.get(key);
+
+    const localFormat = {
+      owner_id: o.owner_id,
+      oc: o.oc, fecha: o.fecha, finca: o.finca, cultivo: o.cultivo, manejo: o.manejo,
+      tecnico: o.tecnico, tractorista: o.tractorista, tractor: o.tractor,
+      maquinaria: o.maquinaria, 
+      volumenMaquinaria: o.vol_maquinaria, 
+      volumenAplicacion: o.vol_aplicacion,
+      cuartel: o.cuartel, indicaciones: o.indicaciones,
+      updated_at: o.updated_at,
+      items: (o.order_item || []).map(it => ({
+          producto: it.producto, ingredienteActivo: it.ia, presentacion: it.presentacion,
+          dosisHa: it.dosis_ha, dosisMaquinada: it.dosis_maquinada, obs: it.obs
+      }))
+    };
+
+    if (existingId) {
+      localFormat.id = existingId; // Mantenemos ID local
     }
-  }
+    
+    // Put sin await (se encola en la transacción)
+    store.put(localFormat);
+  });
+
+  // 5. Esperar a que termine la transacción
+  return new Promise((resolve, reject) => {
+    txRW.oncomplete = () => resolve();
+    txRW.onerror = () => reject(txRW.error);
+  });
 }
 
 /* ================= BUSCADOR ================= */
@@ -331,14 +344,11 @@ async function renderListado() {
 
 /* ================= EVENTOS DE BOTONES ================= */
 function getFormData() {
-  // --- ARREGLO CRÍTICO: Validar ID ---
   let rawId = $('#oc').dataset.id;
   let safeId = undefined;
-  // Solo pasamos el ID si existe y es un número válido mayor a 0
   if (rawId && !isNaN(rawId) && Number(rawId) > 0) {
       safeId = Number(rawId);
   }
-  // ------------------------------------
 
   return {
     id: safeId,
@@ -364,11 +374,9 @@ function setForm(r) {
   (r.items||[]).forEach(addItem);
   $('#ocVisible').textContent = displayOC(r.finca, r.oc);
   
-  // --- LIMPIEZA DE ID ---
   if(r.id) $('#oc').dataset.id = r.id;
-  else delete $('#oc').dataset.id; // Borramos ID anterior si es nueva
+  else delete $('#oc').dataset.id;
 
-  // Lógica de DUEÑO
   if(r.owner_id) $('#oc').dataset.owner = r.owner_id;
   else delete $('#oc').dataset.owner;
 
@@ -385,7 +393,7 @@ function setStatus(type, text, color) {
 $('#btnNueva').onclick = () => { 
     setForm({items:[]}); 
     $('#oc').value=''; 
-    delete $('#oc').dataset.id; // Limpieza crítica
+    delete $('#oc').dataset.id; 
     delete $('#oc').dataset.owner;
     $('#ocVisible').textContent='—'; 
 };
@@ -395,7 +403,6 @@ $('#btnGuardar').onclick = async () => {
     if(!$('#finca').value) return alert('⚠️ Seleccioná FINCA');
     if(!$('#cultivo').value) return alert('⚠️ Seleccioná CULTIVO');
 
-    // Validación de Propiedad
     const { data: { session } } = await supa.auth.getSession();
     const ownerDeLaOrden = $('#oc').dataset.owner;
 
@@ -475,4 +482,5 @@ $('#btnLogout').onclick = async () => {
       $('#btnLogout').style.display='inline-block'; 
   }
 })();
+
 
