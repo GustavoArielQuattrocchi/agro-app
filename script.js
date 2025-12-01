@@ -32,7 +32,7 @@ function openDB() {
     };
     req.onsuccess = (e) => { 
         db=e.target.result; 
-        db.onversionchange = () => { db.close(); alert("Nueva versión detectada. Recarga la página."); };
+        db.onversionchange = () => { db.close(); alert("Base de datos actualizada. Recargando..."); window.location.reload(); };
         resolve(db); 
     };
     req.onerror = () => { idbOk=false; resolve(null); };
@@ -167,18 +167,22 @@ async function saveReceta() {
     }
 
     // 3. Guardar en IDB
-    if(idbOk) await idbOp(tx('recetas','readwrite').put(data));
-    else {
+    if(idbOk) {
+       // PARCHE ID: Si no tiene ID válido, delete property para que IDB genere uno
+       if (!data.id) delete data.id;
+       const res = await idbOp(tx('recetas','readwrite').put(data));
+       if(!data.id) data.id = res; // Actualizar con el ID generado
+    } else {
       const ls = JSON.parse(localStorage.getItem(LS_KEYS.recetas)||'[]');
-      ls.push({...data, id: Date.now()}); 
+      if(!data.id) data.id = Date.now();
+      ls.push(data); 
       localStorage.setItem(LS_KEYS.recetas, JSON.stringify(ls));
     }
 
     // 4. Actualizar UI
     $('#oc').value = data.oc;
     $('#ocVisible').textContent = displayOC(data.finca, data.oc);
-    
-    // Si la orden no tenía ID, aquí podríamos recargar, pero es opcional.
+    if(data.id) $('#oc').dataset.id = data.id;
     
     data.items.forEach(it => {
       if(idbOk) tx('catalogo','readwrite').put({producto:it.producto, ia:it.ingredienteActivo, presentacion:it.presentacion, dosisHa:it.dosisHa});
@@ -193,7 +197,7 @@ async function saveReceta() {
   } catch (error) {
     hideLoading();
     console.error(error);
-    alert('Guardado LOCAL OK, pero error Nube: ' + error.message);
+    alert('Guardado en local, pero error en nube: ' + error.message);
   }
 }
 
@@ -230,7 +234,7 @@ async function syncToCloud(rec) {
     await supa.from('order_item').insert(itemsPayload);
   }
 
-  // B. BAJAR (CON PARCHE DE ID SUCIO)
+  // B. BAJAR
   setStatus('cloud', 'Descargando...', '#38bdf8');
   await downloadFromCloud();
 
@@ -238,18 +242,16 @@ async function syncToCloud(rec) {
 }
 
 async function downloadFromCloud() {
-  // 1. Descargar de la nube
   const { data: orders, error } = await supa.from('order_cura').select('*, order_item(*)');
   if(error) { console.error("Error bajando:", error); return; }
   
   if(!orders || orders.length === 0) return;
 
-  // 2. Preparar mapa local
   const currentLocals = await listRecetas();
   const mapLocals = new Map();
+  // Mapa por Finca + OC para encontrar duplicados
   currentLocals.forEach(r => mapLocals.set(`${r.finca}|${r.oc}`, r.id));
 
-  // 3. Transacción atómica
   const txRW = db.transaction('recetas', 'readwrite');
   const store = txRW.objectStore('recetas');
 
@@ -272,14 +274,13 @@ async function downloadFromCloud() {
       }))
     };
 
-    // --- PARCHE CRÍTICO PARA IDB ---
-    // Solo asignamos el ID si es un número válido. Si no, dejamos que IDB cree uno nuevo.
+    // PARCHE FINAL: Si el ID existe y es valido, úsalo. Si no, BORRA la propiedad id
     if (existingId && typeof existingId === 'number' && !isNaN(existingId)) {
       localFormat.id = existingId;
     } else {
-      delete localFormat.id; // Nos aseguramos de que no haya basura
+      // Importante: No enviar id: undefined o id: null. Borrar la key.
+      delete localFormat.id; 
     }
-    // --------------------------------
     
     store.put(localFormat);
   });
@@ -489,5 +490,6 @@ $('#btnLogout').onclick = async () => {
       $('#btnLogout').style.display='inline-block'; 
   }
 })();
+
 
 
