@@ -174,6 +174,12 @@ async function saveReceta() {
     $('#oc').value = data.oc;
     $('#ocVisible').textContent = displayOC(data.finca, data.oc);
     
+    // Guardar nuevo ID generado si venía vacío
+    if(!data.id) {
+       // Opcional: Podríamos recargar el registro recién guardado, 
+       // pero para el flujo actual basta con dejarlo así hasta recargar.
+    }
+    
     data.items.forEach(it => {
       if(idbOk) tx('catalogo','readwrite').put({producto:it.producto, ia:it.ingredienteActivo, presentacion:it.presentacion, dosisHa:it.dosisHa});
     });
@@ -325,8 +331,17 @@ async function renderListado() {
 
 /* ================= EVENTOS DE BOTONES ================= */
 function getFormData() {
+  // --- ARREGLO CRÍTICO: Validar ID ---
+  let rawId = $('#oc').dataset.id;
+  let safeId = undefined;
+  // Solo pasamos el ID si existe y es un número válido mayor a 0
+  if (rawId && !isNaN(rawId) && Number(rawId) > 0) {
+      safeId = Number(rawId);
+  }
+  // ------------------------------------
+
   return {
-    id: $('#oc').dataset.id ? Number($('#oc').dataset.id) : undefined,
+    id: safeId,
     oc: $('#oc').value, fecha: $('#fecha').value, finca: $('#finca').value,
     cultivo: $('#cultivo').value, manejo: $('#manejo').value, tecnico: $('#tecnico').value,
     tractorista: $('#tractorista').value, tractor: $('#tractor').value,
@@ -349,7 +364,9 @@ function setForm(r) {
   (r.items||[]).forEach(addItem);
   $('#ocVisible').textContent = displayOC(r.finca, r.oc);
   
+  // --- LIMPIEZA DE ID ---
   if(r.id) $('#oc').dataset.id = r.id;
+  else delete $('#oc').dataset.id; // Borramos ID anterior si es nueva
 
   // Lógica de DUEÑO
   if(r.owner_id) $('#oc').dataset.owner = r.owner_id;
@@ -367,7 +384,9 @@ function setStatus(type, text, color) {
 // 1. NUEVA
 $('#btnNueva').onclick = () => { 
     setForm({items:[]}); 
-    $('#oc').value=''; $('#oc').dataset.id=''; 
+    $('#oc').value=''; 
+    delete $('#oc').dataset.id; // Limpieza crítica
+    delete $('#oc').dataset.owner;
     $('#ocVisible').textContent='—'; 
 };
 
@@ -456,3 +475,4 @@ $('#btnLogout').onclick = async () => {
       $('#btnLogout').style.display='inline-block'; 
   }
 })();
+
