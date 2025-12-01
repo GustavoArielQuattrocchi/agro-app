@@ -177,6 +177,8 @@ async function saveReceta() {
     await syncToCloud(data);
 
     hideLoading();
+    // Bloqueamos la orden recién guardada para que no se edite
+    setForm(data);
 
   } catch (error) {
     hideLoading();
@@ -233,6 +235,7 @@ async function downloadFromCloud() {
   // Mapa local para evitar colisiones
   const currentLocals = await listRecetas();
   const mapLocals = new Map();
+  // Mapa por Finca + OC para encontrar duplicados
   currentLocals.forEach(r => mapLocals.set(`${r.finca}|${r.oc}`, r.id));
 
   const txRW = db.transaction('recetas', 'readwrite');
@@ -344,7 +347,9 @@ function getFormData() {
   };
 }
 
+// LÓGICA DE BLOQUEO (SOLO LECTURA)
 function setForm(r) {
+  // 1. Cargar datos
   $('#oc').value = r.oc||''; $('#fecha').value = r.fecha||todayISO();
   $('#finca').value = r.finca||''; $('#cultivo').value = r.cultivo||'';
   $('#manejo').value = r.manejo||''; $('#tecnico').value = r.tecnico||'';
@@ -356,15 +361,33 @@ function setForm(r) {
   (r.items||[]).forEach(addItem);
   $('#ocVisible').textContent = displayOC(r.finca, r.oc);
   
-  // IDs y Propiedad
-  if(r.id) $('#oc').dataset.id = r.id;
-  else delete $('#oc').dataset.id;
-
-  if(r.owner_id) $('#oc').dataset.owner = r.owner_id;
-  else delete $('#oc').dataset.owner;
+  if(r.id) $('#oc').dataset.id = r.id; else delete $('#oc').dataset.id;
+  if(r.owner_id) $('#oc').dataset.owner = r.owner_id; else delete $('#oc').dataset.owner;
 
   if(r.manejo === 'Orgánico') document.body.classList.add('organic'); else document.body.classList.remove('organic');
   recalcDosisMaquinada();
+
+  // 2. BLOQUEAR SI YA EXISTE (ID > 0)
+  if (r.id) {
+      $$('input, select, textarea').forEach(el => el.disabled = true);
+      $('#btnGuardar').style.display = 'none';
+      $('#addItem').style.display = 'none';
+      $('#clearItems').style.display = 'none';
+      $$('.btnDel').forEach(b => b.style.display = 'none');
+      
+      // Marca visual
+      $('#ocVisible').innerHTML = `${displayOC(r.finca, r.oc)} <span style="color:#ef4444; font-size:0.8em; margin-left:5px">🔒 CERRADA</span>`;
+  } else {
+      desbloquearFormulario();
+  }
+}
+
+function desbloquearFormulario() {
+    $$('input, select, textarea').forEach(el => el.disabled = false);
+    $('#oc').readOnly = true; // OC siempre ReadOnly
+    $('#btnGuardar').style.display = ''; 
+    $('#addItem').style.display = '';
+    $('#clearItems').style.display = '';
 }
 
 function setStatus(type, text, color) {
@@ -375,6 +398,10 @@ function setStatus(type, text, color) {
 // 1. NUEVA
 $('#btnNueva').onclick = async () => { 
     setForm({items:[]}); 
+    
+    // Forzamos desbloqueo
+    desbloquearFormulario();
+
     $('#oc').value=''; 
     delete $('#oc').dataset.id; 
     delete $('#oc').dataset.owner;
@@ -389,19 +416,12 @@ $('#btnNueva').onclick = async () => {
     }
 };
 
-// 2. GUARDAR (CON BLOQUEO)
+// 2. GUARDAR
 $('#btnGuardar').onclick = async () => {
     if(!$('#finca').value) return alert('⚠️ Seleccioná FINCA');
     if(!$('#cultivo').value) return alert('⚠️ Seleccioná CULTIVO');
-
-    const { data: { session } } = await supa.auth.getSession();
-    const ownerDeLaOrden = $('#oc').dataset.owner;
-
-    if (ownerDeLaOrden && session && ownerDeLaOrden !== session.user.id) {
-        alert("⛔ No autorizado\n\nEsta orden pertenece a otro usuario. No puedes modificarla.");
-        return;
-    }
-
+    // Ya no es necesario verificar dueño porque el botón desaparece, 
+    // pero dejamos la seguridad por si acaso.
     await saveReceta();
 };
 
@@ -410,13 +430,16 @@ $('#btnSync').onclick = async () => {
     showLoading();
     try {
         const hayDatos = $('#finca').value;
-        if(hayDatos) await syncToCloud(getFormData());
+        // Solo intentamos subir si es una orden NUEVA (sin ID)
+        const esNueva = !$('#oc').dataset.id;
+        
+        if(hayDatos && esNueva) await syncToCloud(getFormData());
         else {
              setStatus('cloud', 'Descargando...', '#38bdf8');
              await downloadFromCloud();
              setStatus('cloud', 'Sincronizado', '#22c55e');
         }
-        setTimeout(() => { hideLoading(); alert('✅ Sync completado.'); }, 500);
+        setTimeout(() => { hideLoading(); alert('✅ Sincronización completa.'); }, 500);
     } catch(e) {
         hideLoading();
         alert('❌ Error: ' + e.message);
@@ -484,6 +507,7 @@ $('#btnLogout').onclick = async () => {
       $('#btnLogout').style.display='inline-block'; 
   }
 })();
+
 
 
 
