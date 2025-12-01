@@ -14,53 +14,126 @@
       <button class="btn light" id="btnGuardar">Guardar</button>
       <button class="btn light" id="btnListado">Buscar</button>
       <button class="btn warning" id="btnPDF">PDF</button>
+      
       <button class="btn light" id="btnLogin">Login</button>
-      <button class="btn light" id="btnSync" title="Sincronizar ahora">Sync ☁️</button>
       <button class="btn light" id="btnLogout" style="display:none">Salir</button>
+      <button class="btn light" id="btnSync" title="Sincronizar ahora">Sync ☁️</button>
     </div>
   </header>
 
   <main>
     <div class="grid">
-        <section class="card">
-            <h2>Datos principales</h2>
-            <div class="row">
-              <div><label>N° OC</label><input id="oc" type="text" readonly class="tbl-input" /><div class="hint">Auto: <strong id="ocVisible">—</strong></div></div>
-              <div><label>Fecha</label><input id="fecha" type="date" class="tbl-input" /></div>
-            </div>
-            <div class="row">
-              <div><label>FINCA</label><select id="finca" class="tbl-input"><option value="">Seleccioná…</option><option>FOA</option><option>FLP</option><option>SC1</option><option>SC2</option><option>SC3</option><option>FSP</option></select></div>
-              <div><label>Cultivo</label><select id="cultivo" class="tbl-input"><option value="">Seleccioná…</option><option>VID</option><option>NOGAL</option><option>OTROS</option></select></div>
-            </div>
-            <div class="row">
-              <div><label>Manejo</label><select id="manejo" class="tbl-input"><option value="">Seleccioná…</option><option>Orgánico</option><option>Convencional</option></select></div>
-              <div><label>Profesional</label><select id="tecnico" class="tbl-input"><option value="">Seleccioná…</option><option>Quattrocchi</option><option>Mateu</option><option>Gutierrez</option></select></div>
-            </div>
-        </section>
+      <section class="card">
+        <h2>Datos principales</h2>
+        <div class="row">
+          <div>
+            <label>N° OC</label>
+            <input id="oc" type="text" readonly class="tbl-input" />
+            <div class="hint">Auto: <strong id="ocVisible">—</strong></div>
+          </div>
+          <div>
+            <label>Fecha</label>
+            <input id="fecha" type="date" class="tbl-input" />
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label>FINCA</label>
+            <select id="finca" class="tbl-input">
+              <option value="">Seleccioná…</option>
+              <option>FOA</option><option>FLP</option><option>SC1</option>
+              <option>SC2</option><option>SC3</option><option>FSP</option>
+            </select>
+          </div>
+          <div>
+            <label>Cultivo</label>
+            <select id="cultivo" class="tbl-input">
+              <option value="">Seleccioná…</option>
+              <option>VID</option><option>NOGAL</option><option>OTROS</option>
+            </select>
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label>Manejo</label>
+            <select id="manejo" class="tbl-input">
+              <option value="">Seleccioná…</option>
+              <option>Orgánico</option><option>Convencional</option>
+            </select>
+          </div>
+          <div>
+            <label>Profesional</label>
+            <select id="tecnico" class="tbl-input">
+              <option value="">Seleccioná…</option>
+              <option>Quattrocchi</option><option>Mateu</option><option>Gutierrez</option>
+            </select>
+          </div>
+        </div>
+      </section>
 
-        <section class="card">
-            <h2>Aplicación</h2>
-            <div class="row"><div><label>Tractorista</label><input id="tractorista" type="text" class="tbl-input" /></div><div><label>Tractor</label><input id="tractor" type="text" class="tbl-input" /></div></div>
-            <div class="row"><div><label>Maquinaria</label><input id="maquinaria" type="text" class="tbl-input" /></div><div><label>Vol. Tanque (L)</label><input id="volumenMaquinaria" type="number" class="tbl-input" /></div></div>
-            <div class="row"><div><label>Aplicación (L/ha)</label><input id="volumenAplicacion" type="number" class="tbl-input" /></div><div><label>Cuartel/Lote</label><input id="cuartel" type="text" class="tbl-input" /></div></div>
-        </section>
+      <section class="card">
+        <h2>Aplicación</h2>
+        <div class="row">
+          <div><label>Tractorista</label><input id="tractorista" type="text" class="tbl-input" /></div>
+          <div><label>Tractor</label><input id="tractor" type="text" class="tbl-input" /></div>
+        </div>
+        <div class="row">
+          <div><label>Maquinaria</label><input id="maquinaria" type="text" class="tbl-input" /></div>
+          <div><label>Vol. Tanque (L)</label><input id="volumenMaquinaria" type="number" class="tbl-input" /></div>
+        </div>
+        <div class="row">
+          <div><label>Aplicación (L/ha)</label><input id="volumenAplicacion" type="number" class="tbl-input" /></div>
+          <div><label>Cuartel/Lote</label><input id="cuartel" type="text" class="tbl-input" /></div>
+        </div>
+      </section>
     </div>
 
     <section class="card">
-        <h2>Productos</h2>
-        <div class="tools no-print"><span class="factor" id="factorChip">Factor: —</span><div class="right"><button class="btn small light" id="addItem">+ Item</button><button class="btn small danger" id="clearItems">Vaciar</button></div></div>
-        <datalist id="dlProductos"></datalist>
-        <div class="table-responsive">
-            <table id="items"><thead><tr><th style="min-width:140px">Producto</th><th style="min-width:120px">Ing. Activo</th><th style="min-width:80px">Pres.</th><th style="min-width:80px">Dosis/ha</th><th style="min-width:80px">Dosis/Maq</th><th style="min-width:140px">Obs</th><th class="no-print" style="width:50px"></th></tr></thead><tbody></tbody></table>
+      <h2>Productos</h2>
+      <div class="tools no-print">
+        <span class="factor" id="factorChip">Factor: —</span>
+        <div class="right">
+          <button class="btn small light" id="addItem">+ Item</button>
+          <button class="btn small danger" id="clearItems">Vaciar</button>
         </div>
-        <label style="margin-top:10px">Indicaciones</label><textarea id="indicaciones" class="tbl-input"></textarea>
+      </div>
+      <datalist id="dlProductos"></datalist>
+      
+      <div class="table-responsive">
+        <table id="items">
+          <thead>
+            <tr>
+              <th style="min-width:140px">Producto</th>
+              <th style="min-width:120px">Ing. Activo</th>
+              <th style="min-width:80px">Pres.</th>
+              <th style="min-width:80px">Dosis/ha</th>
+              <th style="min-width:80px">Dosis/Maq</th>
+              <th style="min-width:140px">Obs</th>
+              <th class="no-print" style="width:50px"></th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <label style="margin-top:10px">Indicaciones generales</label>
+      <textarea id="indicaciones" class="tbl-input"></textarea>
     </section>
 
     <div class="paper" id="printArea">
-        <h1 id="printTitle">Orden de cura – BODEGA SALENTEIN</h1>
-        <div class="meta" id="metaBox"></div>
-        <table id="printTable"><thead><tr><th>Producto</th><th>Ing. Activo</th><th>Pres.</th><th>Dosis/Maq</th><th>Obs.</th></tr></thead><tbody></tbody></table>
-        <div style="margin-top:10px"><strong>Indicaciones:</strong><div id="printIndicaciones" style="white-space: pre-wrap; margin-top:4px"></div></div>
+      <h1 id="printTitle">Orden de cura – BODEGA SALENTEIN</h1>
+      <div class="meta" id="metaBox"></div>
+      <table id="printTable">
+        <thead>
+          <tr>
+            <th>Producto</th><th>Ing. Activo</th><th>Pres.</th><th>Dosis/Maq</th><th>Obs.</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      <div style="margin-top:10px">
+        <strong>Indicaciones:</strong>
+        <div id="printIndicaciones" style="white-space: pre-wrap; margin-top:4px"></div>
+      </div>
     </div>
   </main>
 
@@ -95,8 +168,8 @@
   <div class="modal" id="loadingModal" style="z-index:9999; background:rgba(0,0,0,0.8);">
     <div style="text-align:center; color:white;">
       <div class="spinner"></div>
-      <h3 style="margin-top:20px">Guardando y Sincronizando...</h3>
-      <p>Por favor espera</p>
+      <h3 style="margin-top:20px">Procesando...</h3>
+      <p>Sincronizando con la nube</p>
     </div>
   </div>
 
@@ -107,4 +180,3 @@
   <script src="script.js"></script>
 </body>
 </html>
-
