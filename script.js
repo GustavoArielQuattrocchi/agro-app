@@ -1,11 +1,8 @@
 /* ================= CONFIGURACIÓN ================= */
-const IS_PROD = location.hostname.endsWith(".vercel.app");
 const SUPABASE_URL = "https://tqaidimwfhlklkhsgtam.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRxYWlkaW13Zmhsa2xraHNndGFtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ1ODc3MjksImV4cCI6MjA4MDE2MzcyOX0.FuuvVxuKqaGR_9q_aB1-OaCf-gIFbTE7U-i4I__Ti0Q";
 
-// Inicializar cliente
 const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
 const DB_NAME = 'RecetaDigitalDB';
 const DB_VERSION = 11;
 const LS_KEYS = { settings:'receta_settings', recetas:'receta_items', catalogo:'receta_catalogo' };
@@ -19,8 +16,10 @@ const $ = (s) => document.querySelector(s);
 const $$ = (s) => Array.from(document.querySelectorAll(s));
 function todayISO() { const d=new Date(); d.setMinutes(d.getMinutes()-d.getTimezoneOffset()); return d.toISOString().slice(0,10); }
 function num(v) { if(!v) return NaN; return parseFloat(String(v).replace(',', '.').trim()); }
+function showLoading() { $('#loadingModal').classList.add('open'); }
+function hideLoading() { $('#loadingModal').classList.remove('open'); }
 
-/* ================= INDEXED DB (OFFLINE) ================= */
+/* ================= INDEXED DB (BASE DE DATOS LOCAL) ================= */
 function openDB() {
   return new Promise((resolve) => {
     if (!('indexedDB' in window)) { idbOk=false; resolve(null); return; }
@@ -35,7 +34,6 @@ function openDB() {
     req.onerror = () => { idbOk=false; resolve(null); };
   });
 }
-
 const tx = (name, mode='readonly') => db.transaction(name, mode).objectStore(name);
 const idbOp = (req) => new Promise((res, rej) => { req.onsuccess=()=>res(req.result); req.onerror=()=>rej(req.error); });
 
@@ -50,7 +48,6 @@ async function setSetting(key, val) {
 async function catAll() { return idbOk ? new Promise(r=>{const a=[]; tx('catalogo').openCursor().onsuccess=e=>{const c=e.target.result; c?(a.push(c.value),c.continue()):r(a)}}) : JSON.parse(localStorage.getItem(LS_KEYS.catalogo)||'[]'); }
 
 /* ================= LÓGICA DE NEGOCIO ================= */
-// 1. Consecutivos
 async function getNextOCForFinca(finca) {
   const map = (await getSetting(NEXT_MAP_KEY)) || {};
   return Number(map[String(finca).trim().toUpperCase()] || 1);
@@ -75,7 +72,7 @@ async function recomputeAllFincasNextOC(){
   await setSetting(NEXT_MAP_KEY, map);
 }
 
-// 2. Cálculos de Dosis
+// Cálculo de dosis
 function parseQuantity(q) {
   if(!q) return {value:NaN, unit:'', kind:'liquid'};
   const s = q.toLowerCase().replace(',', '.');
@@ -83,7 +80,7 @@ function parseQuantity(q) {
   let unit = /\bml\b/.test(s)?'ml' : /\bl|litro/.test(s)?'L' : /\bkg\b/.test(s)?'kg' : /\bg\b/.test(s)?'g' : 'L';
   const kind = (unit==='ml'||unit==='L')?'liquid':'solid';
   let base = raw;
-  if(unit==='L'||unit==='kg') base *= 1000; // Normalizar a ml/g base
+  if(unit==='L'||unit==='kg') base *= 1000;
   return {value:base, unit, kind};
 }
 
@@ -91,44 +88,35 @@ function recalcDosisMaquinada() {
   const volMaq = num($('#volumenMaquinaria').value);
   const volApl = num($('#volumenAplicacion').value);
   const factor = (volMaq && volApl) ? volMaq/volApl : 0;
-  
   $('#factorChip').textContent = factor ? `Factor: ${factor.toFixed(2)}` : 'Factor: —';
 
   $$('#items tbody tr').forEach(tr => {
     const inHa = tr.querySelector('.it-dosisHa').value;
     const outField = tr.querySelector('.it-dosisMaquinada');
     const pres = tr.querySelector('.it-presentacion').value.toLowerCase();
-    
     if(!factor || !inHa) { outField.value = ''; return; }
-    
     const q = parseQuantity(inHa);
     if(isNaN(q.value)) return;
-
-    let total = q.value * factor; // Total en ml o g
-    
-    // Formatear salida inteligente
+    let total = q.value * factor;
     let outUnit = q.kind === 'liquid' ? 'ml' : 'g';
     if(pres.includes('l') || pres.includes('litro')) outUnit = 'L';
     if(pres.includes('kg')) outUnit = 'kg';
-
     if(outUnit === 'L' || outUnit === 'kg') total /= 1000;
-    
     outField.value = `${parseFloat(total.toFixed(2))} ${outUnit}`;
   });
 }
 
-// 3. Gestión de Items UI
+// Items UI
 function addItem(prefill={}) {
   const tr = document.createElement('tr');
   tr.innerHTML = `
-    <td><input class="tbl-input it-producto" list="dlProductos" placeholder="Producto" value="${prefill.producto||''}"></td>
-    <td><input class="tbl-input it-ia" placeholder="Ing. Activo" value="${prefill.ingredienteActivo||''}"></td>
-    <td><input class="tbl-input it-presentacion" placeholder="Unid." value="${prefill.presentacion||''}"></td>
-    <td><input class="tbl-input it-dosisHa" type="text" placeholder="Dosis/ha" value="${prefill.dosisHa||''}"></td>
+    <td><input class="tbl-input it-producto" list="dlProductos" placeholder="Prod" value="${prefill.producto||''}"></td>
+    <td><input class="tbl-input it-ia" placeholder="IA" value="${prefill.ingredienteActivo||''}"></td>
+    <td><input class="tbl-input it-presentacion" placeholder="Unid" value="${prefill.presentacion||''}"></td>
+    <td><input class="tbl-input it-dosisHa" placeholder="Dosis/ha" value="${prefill.dosisHa||''}"></td>
     <td><input class="tbl-input it-dosisMaquinada" readonly tabindex="-1"></td>
     <td><input class="tbl-input it-obs" placeholder="..." value="${prefill.obs||''}"></td>
     <td class="no-print"><button class="btn small danger btnDel">×</button></td>`;
-  
   tr.querySelector('.btnDel').onclick = () => { tr.remove(); recalcDosisMaquinada(); };
   ['input','change'].forEach(ev => tr.addEventListener(ev, (e) => {
     if(e.target.matches('.it-dosisHa, .it-presentacion')) recalcDosisMaquinada();
@@ -160,84 +148,154 @@ function readItems() {
   })).filter(x => x.producto);
 }
 
-/* ================= CRUD & SYNC ================= */
+/* ================= GUARDAR Y SYNC ================= */
 async function saveReceta() {
   const data = getFormData();
-  if(!data.finca) return alert('Falta FINCA');
+  if(!data.finca) return alert('Por favor seleccioná una FINCA');
   
-  // Generar OC si es nueva
-  let ocNum = Number(data.oc.replace(/^0+/,'')) || 0;
-  if(ocNum <= 0) {
-    await recomputeAllFincasNextOC(); // Asegurar consistencia
-    ocNum = await getNextOCForFinca(data.finca);
-    data.oc = String(ocNum).padStart(6,'0');
-    // Actualizar contador
-    await setNextOCForFinca(data.finca, ocNum + 1);
+  // 1. Mostrar cartel de cargando
+  showLoading();
+
+  try {
+    // 2. Generar OC si no tiene
+    let ocNum = Number(data.oc.replace(/^0+/,'')) || 0;
+    if(ocNum <= 0) {
+      await recomputeAllFincasNextOC();
+      ocNum = await getNextOCForFinca(data.finca);
+      data.oc = String(ocNum).padStart(6,'0');
+      await setNextOCForFinca(data.finca, ocNum + 1);
+    }
+
+    // 3. Guardar en Base de Datos LOCAL
+    if(idbOk) await idbOp(tx('recetas','readwrite').put(data));
+    else {
+      const ls = JSON.parse(localStorage.getItem(LS_KEYS.recetas)||'[]');
+      ls.push({...data, id: Date.now()}); 
+      localStorage.setItem(LS_KEYS.recetas, JSON.stringify(ls));
+    }
+
+    // 4. Actualizar vista
+    $('#oc').value = data.oc;
+    $('#ocVisible').textContent = displayOC(data.finca, data.oc);
+    
+    // 5. Aprender producto para el futuro
+    data.items.forEach(it => {
+      if(idbOk) tx('catalogo','readwrite').put({producto:it.producto, ia:it.ingredienteActivo, presentacion:it.presentacion, dosisHa:it.dosisHa});
+    });
+
+    // 6. Intentar sincronizar con la NUBE
+    await syncToCloud(data);
+
+    // 7. Cerrar cartel
+    hideLoading();
+    // alert('¡Guardado correctamente!'); // Opcional, ya se vio el cartel
+
+  } catch (error) {
+    hideLoading();
+    console.error(error);
+    alert('Error al guardar: ' + error.message);
   }
-
-  // Guardar Local
-  if(idbOk) await idbOp(tx('recetas','readwrite').put(data));
-  else {
-    const ls = JSON.parse(localStorage.getItem(LS_KEYS.recetas)||'[]');
-    ls.push({...data, id: Date.now()}); 
-    localStorage.setItem(LS_KEYS.recetas, JSON.stringify(ls));
-  }
-
-  // Actualizar UI
-  $('#oc').value = data.oc;
-  $('#ocVisible').textContent = displayOC(data.finca, data.oc);
-  
-  // Aprender productos nuevos
-  data.items.forEach(it => {
-    if(idbOk) tx('catalogo','readwrite').put({producto:it.producto, ia:it.ingredienteActivo, presentacion:it.presentacion, dosisHa:it.dosisHa});
-  });
-
-  alert('Guardado localmente. Sync en segundo plano...');
-  syncToCloud(data);
-}
-
-async function listRecetas() {
-  if(!idbOk) return JSON.parse(localStorage.getItem(LS_KEYS.recetas)||'[]');
-  return new Promise(r => { 
-      const res = []; 
-      tx('recetas').openCursor().onsuccess = e => {
-          const c = e.target.result;
-          if(c) { res.push(c.value); c.continue(); } else r(res);
-      }
-  });
 }
 
 async function syncToCloud(rec) {
+  // Verificar sesión
   const { data: { session } } = await supa.auth.getSession();
-  if(!session) return setStatus('cloud', 'Offline', '#94a3b8');
-  
-  setStatus('cloud', 'Subiendo...', '#38bdf8');
-  try {
-    const payload = {
-      owner_id: session.user.id,
-      oc: rec.oc, fecha: rec.fecha, finca: rec.finca, cultivo: rec.cultivo, manejo: rec.manejo,
-      tecnico: rec.tecnico, tractorista: rec.tractorista, tractor: rec.tractor,
-      maquinaria: rec.maquinaria, vol_maquinaria: num(rec.volumenMaquinaria), vol_aplicacion: num(rec.volumenAplicacion),
-      cuartel: rec.cuartel, indicaciones: rec.indicaciones, updated_at: new Date().toISOString()
-    };
-
-    const { data: up, error } = await supa.from('order_cura').upsert(payload, { onConflict: 'owner_id,finca,oc' }).select().single();
-    if(error) throw error;
-
-    // Items
-    await supa.from('order_item').delete().eq('order_id', up.id);
-    if(rec.items.length) {
-      const itemsPayload = rec.items.map(it => ({
-        order_id: up.id, producto: it.producto, ia: it.ingredienteActivo, presentacion: it.presentacion,
-        dosis_ha: it.dosisHa, dosis_maquinada: it.dosisMaquinada, obs: it.obs
-      }));
-      await supa.from('order_item').insert(itemsPayload);
-    }
-    setStatus('cloud', 'Sincronizado', '#22c55e');
-  } catch (e) {
-    console.error(e);
-    setStatus('cloud', 'Error Sync', '#ef4444');
+  if(!session) {
+    setStatus('cloud', 'Offline (Sin Login)', '#94a3b8');
+    return; // Si no hay usuario, no sube
   }
+  
+  setStatus('cloud', 'Sincronizando...', '#38bdf8');
+  
+  // Mapear datos LOCALES -> NUBE (Supabase usa guiones bajos)
+  const payload = {
+    owner_id: session.user.id,
+    oc: rec.oc, fecha: rec.fecha, finca: rec.finca, cultivo: rec.cultivo, manejo: rec.manejo,
+    tecnico: rec.tecnico, tractorista: rec.tractorista, tractor: rec.tractor,
+    maquinaria: rec.maquinaria, 
+    vol_maquinaria: num(rec.volumenMaquinaria), 
+    vol_aplicacion: num(rec.volumenAplicacion),
+    cuartel: rec.cuartel, indicaciones: rec.indicaciones, 
+    updated_at: new Date().toISOString()
+  };
+
+  const { data: up, error } = await supa.from('order_cura').upsert(payload, { onConflict: 'owner_id,finca,oc' }).select().single();
+  
+  if(error) {
+    console.error("Error Sync Cabecera:", error);
+    setStatus('cloud', 'Error Sync', '#ef4444');
+    throw error;
+  }
+
+  // Items
+  await supa.from('order_item').delete().eq('order_id', up.id);
+  if(rec.items.length) {
+    const itemsPayload = rec.items.map(it => ({
+      order_id: up.id, producto: it.producto, ia: it.ingredienteActivo, presentacion: it.presentacion,
+      dosis_ha: it.dosisHa, dosis_maquinada: it.dosisMaquinada, obs: it.obs
+    }));
+    const { error: errItems } = await supa.from('order_item').insert(itemsPayload);
+    if(errItems) {
+        console.error("Error Sync Items:", errItems);
+        throw errItems;
+    }
+  }
+  setStatus('cloud', 'Sincronizado', '#22c55e');
+}
+
+/* ================= BUSCADOR Y LISTADO ================= */
+async function listRecetas() {
+    if(!idbOk) return JSON.parse(localStorage.getItem(LS_KEYS.recetas)||'[]');
+    return new Promise(r => { 
+        const res = []; 
+        tx('recetas').openCursor().onsuccess = e => {
+            const c = e.target.result;
+            if(c) { res.push(c.value); c.continue(); } else r(res);
+        }
+    });
+}
+
+async function renderListado() {
+    const tbody = $('#tablaListado tbody');
+    tbody.innerHTML = '<tr><td colspan="4">Cargando...</td></tr>';
+    
+    // Obtener datos locales
+    let lista = await listRecetas();
+    
+    // Filtro de búsqueda
+    const q = $('#q').value.toLowerCase();
+    if(q) {
+        lista = lista.filter(r => 
+            (r.finca||'').toLowerCase().includes(q) || 
+            (r.oc||'').includes(q) ||
+            (r.cultivo||'').toLowerCase().includes(q)
+        );
+    }
+
+    // Ordenar (más reciente primero)
+    lista.sort((a,b) => new Date(b.fecha) - new Date(a.fecha));
+
+    tbody.innerHTML = '';
+    if(lista.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4">No se encontraron órdenes.</td></tr>';
+        return;
+    }
+
+    lista.forEach(r => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${displayOC(r.finca, r.oc)}</td>
+            <td>${r.fecha}</td>
+            <td>${r.finca}</td>
+            <td><button class="btn small primary btnCargar" data-id="${r.id}">Abrir</button></td>
+        `;
+        // Click en "Abrir"
+        tr.querySelector('.btnCargar').onclick = () => {
+            setForm(r);
+            $('#modalListado').classList.remove('open');
+        };
+        tbody.appendChild(tr);
+    });
 }
 
 /* ================= UI EVENTS & UTIL ================= */
@@ -266,9 +324,7 @@ function setForm(r) {
   (r.items||[]).forEach(addItem);
   $('#ocVisible').textContent = displayOC(r.finca, r.oc);
   if(r.id) $('#oc').dataset.id = r.id;
-  
-  if(r.manejo === 'Orgánico') document.body.classList.add('organic');
-  else document.body.classList.remove('organic');
+  if(r.manejo === 'Orgánico') document.body.classList.add('organic'); else document.body.classList.remove('organic');
   recalcDosisMaquinada();
 }
 
@@ -278,68 +334,48 @@ function setStatus(type, text, color) {
 }
 
 // Event Listeners
-$('#btnNueva').onclick = () => { 
-    setForm({items:[]}); 
-    $('#oc').value=''; $('#oc').dataset.id=''; 
-    $('#ocVisible').textContent='—'; 
-};
+$('#btnNueva').onclick = () => { setForm({items:[]}); $('#oc').value=''; $('#oc').dataset.id=''; $('#ocVisible').textContent='—'; };
 $('#btnGuardar').onclick = saveReceta;
 $('#addItem').onclick = () => addItem();
 $('#clearItems').onclick = () => { $('#items tbody').innerHTML=''; addItem(); };
-$('#finca').onchange = async (e) => {
-    const n = await getNextOCForFinca(e.target.value);
-    $('#oc').value = String(n).padStart(6,'0');
-    $('#ocVisible').textContent = displayOC(e.target.value, $('#oc').value);
-};
-$('#manejo').onchange = (e) => {
-    if(e.target.value === 'Orgánico') document.body.classList.add('organic');
-    else document.body.classList.remove('organic');
-};
+$('#finca').onchange = async (e) => { const n = await getNextOCForFinca(e.target.value); $('#oc').value = String(n).padStart(6,'0'); $('#ocVisible').textContent = displayOC(e.target.value, $('#oc').value); };
+$('#manejo').onchange = (e) => { if(e.target.value === 'Orgánico') document.body.classList.add('organic'); else document.body.classList.remove('organic'); };
 
-// Imprimir
+// BUSCADOR
+$('#btnListado').onclick = () => { $('#modalListado').classList.add('open'); renderListado(); };
+$('#btnCerrarListado').onclick = () => $('#modalListado').classList.remove('open');
+$('#q').addEventListener('input', renderListado);
+
+// PDF
 $('#btnPDF').onclick = () => {
   const d = getFormData();
-  $('#metaBox').innerHTML = `
-    <div><strong>OC:</strong> ${displayOC(d.finca, d.oc)}</div>
-    <div><strong>Fecha:</strong> ${d.fecha}</div>
-    <div><strong>Finca:</strong> ${d.finca} (${d.cuartel})</div>
-    <div><strong>Tractor:</strong> ${d.tractor} (${d.tractorista})</div>
-    <div><strong>Vol. Maq:</strong> ${d.volumenMaquinaria}L</div>
-  `;
+  $('#metaBox').innerHTML = `<div><strong>OC:</strong> ${displayOC(d.finca, d.oc)}</div><div><strong>Fecha:</strong> ${d.fecha}</div><div><strong>Finca:</strong> ${d.finca} (${d.cuartel})</div><div><strong>Tractor:</strong> ${d.tractor} (${d.tractorista})</div><div><strong>Vol. Maq:</strong> ${d.volumenMaquinaria}L</div>`;
   const tbody = $('#printTable tbody'); tbody.innerHTML='';
-  d.items.forEach(it => {
-    tbody.innerHTML += `<tr><td>${it.producto}</td><td>${it.ingredienteActivo}</td><td>${it.presentacion}</td><td>${it.dosisMaquinada}</td><td>${it.obs}</td></tr>`;
-  });
+  d.items.forEach(it => tbody.innerHTML += `<tr><td>${it.producto}</td><td>${it.ingredienteActivo}</td><td>${it.presentacion}</td><td>${it.dosisMaquinada}</td><td>${it.obs}</td></tr>`);
   $('#printIndicaciones').textContent = d.indicaciones;
   window.print();
 };
 
-// Login Magic Link
+// LOGIN
 $('#btnLogin').onclick = () => $('#loginModal').classList.add('open');
 $('#btnCloseLogin').onclick = () => $('#loginModal').classList.remove('open');
 $('#btnSendMagicLink').onclick = async () => {
     const email = $('#loginEmail').value;
     const { error } = await supa.auth.signInWithOtp({ email });
-    alert(error ? error.message : 'Revisa tu correo!');
+    alert(error ? error.message : '¡Revisa tu correo para el enlace mágico!');
     if(!error) $('#loginModal').classList.remove('open');
 };
 
 /* ================= INIT ================= */
 (async function() {
   await openDB();
-  setStatus('storage', idbOk?'IndexedDB OK':'Modo Fallback (LocalStorage)', idbOk?'#22c55e':'#f59e0b');
-  
+  setStatus('storage', idbOk?'IndexedDB OK':'LocalStorage', idbOk?'#22c55e':'#f59e0b');
   if(!$('#fecha').value) $('#fecha').value = todayISO();
-  addItem(); // Fila vacía inicial
-  
-  // Refrescar Datalist
+  addItem(); 
   const prods = await catAll();
   $('#dlProductos').innerHTML = prods.map(p => `<option value="${p.producto}">`).join('');
-
-  // Check Auth
+  
+  // Check Login
   const { data: { session } } = await supa.auth.getSession();
-  if(session) { 
-      setStatus('cloud', 'Online', '#22c55e');
-      $('#btnLogin').style.display='none'; $('#btnLogout').style.display='';
-  }
+  if(session) { setStatus('cloud', 'Online', '#22c55e'); $('#btnLogin').style.display='none'; $('#btnLogout').style.display=''; }
 })();
