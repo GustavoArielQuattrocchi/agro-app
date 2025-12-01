@@ -1,0 +1,105 @@
+:root {
+  --bg: #0f172a; --panel: #1e293b; --ink: #e2e8f0; --muted: #94a3b8;
+  --accent: #22c55e; --danger: #ef4444; --brand: #38bdf8;
+  --paper: #ffffff; --line: #cbd5e1; --chip: #334155;
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+
+body {
+  background: var(--bg); color: var(--ink);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 16px; /* Mejor lectura en móvil */
+}
+
+body.organic { background: linear-gradient(135deg, #064e3b, #065f46); }
+
+/* Header & Nav */
+header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 16px; background: rgba(15, 23, 42, 0.95);
+  position: sticky; top: 0; z-index: 20; border-bottom: 1px solid rgba(255,255,255,0.1);
+  backdrop-filter: blur(5px);
+}
+header h1 { font-size: 1.1rem; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+header .btns { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; }
+/* Scroll horizontal en menú si hay muchos botones */
+header .btns::-webkit-scrollbar { height: 0px; background: transparent; } 
+
+/* Botones mejorados para touch */
+.btn {
+  padding: 10px 16px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);
+  background: var(--panel); color: var(--ink); font-weight: 600; cursor: pointer;
+  white-space: nowrap; user-select: none;
+}
+.btn:active { transform: scale(0.98); }
+.btn.primary { background: var(--accent); color: #022c22; border: none; }
+.btn.warning { background: #f59e0b; color: #451a03; border: none; }
+.btn.danger { background: var(--danger); color: white; border: none; }
+.btn.small { padding: 6px 12px; font-size: 0.9rem; }
+
+/* Layout Grid */
+main { max-width: 1200px; margin: 16px auto 80px; padding: 0 12px; }
+.grid { display: grid; gap: 16px; grid-template-columns: 1fr; }
+@media(min-width: 900px) { .grid { grid-template-columns: 1fr 1fr; } }
+
+/* Cards */
+.card {
+  background: var(--panel); border: 1px solid rgba(255,255,255,0.05);
+  border-radius: 12px; padding: 16px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+}
+.card h2 { margin-top: 0; font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+
+/* Formularios */
+.row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+@media(max-width: 480px) { .row { grid-template-columns: 1fr; } } /* Stack en móviles muy chicos */
+
+label { display: block; font-size: 0.85rem; color: var(--muted); margin-bottom: 4px; }
+input, select, textarea {
+  width: 100%; padding: 12px; border-radius: 8px;
+  border: 1px solid #334155; background: #0f172a; color: white;
+  font-size: 1rem; outline: none; transition: border-color 0.2s;
+}
+input:focus, select:focus, textarea:focus { border-color: var(--brand); }
+.hint { font-size: 0.8rem; color: var(--muted); margin-top: 4px; }
+
+/* Tablas Responsivas */
+.table-responsive { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: 8px; border: 1px solid #334155; }
+table { width: 100%; border-collapse: collapse; min-width: 600px; /* Fuerza scroll horizontal */ }
+th { text-align: left; padding: 10px; background: #020617; color: var(--muted); font-size: 0.85rem; position: sticky; top: 0; }
+td { padding: 8px; border-top: 1px solid #334155; vertical-align: top; }
+.tbl-input { padding: 8px; font-size: 0.95rem; background: transparent; border: 1px solid transparent; }
+.tbl-input:focus { background: #0f172a; border-color: var(--brand); }
+
+/* Chips y Status */
+.factor { display: inline-block; padding: 4px 10px; border-radius: 20px; background: var(--chip); font-size: 0.85rem; }
+#cloudStatus, #storageStatus {
+  position: fixed; right: 10px; padding: 6px 12px; border-radius: 20px;
+  font-size: 0.75rem; font-weight: bold; z-index: 100; box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+}
+#storageStatus { bottom: 10px; background: var(--brand); color: #0f172a; }
+#cloudStatus { bottom: 45px; background: var(--muted); color: #0f172a; }
+
+/* Modal */
+.modal {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+  display: none; align-items: center; justify-content: center; z-index: 50; padding: 20px;
+}
+.modal.open { display: flex; }
+.modal .sheet {
+  background: var(--panel); width: 100%; max-width: 800px; max-height: 90vh;
+  overflow-y: auto; padding: 20px; border-radius: 12px;
+}
+
+/* Hoja de Impresión (oculta visualmente en app) */
+.paper { background: white; color: black; padding: 20px; border-radius: 4px; display: none; }
+@media print {
+  body { background: white; color: black; }
+  .no-print, .no-print-block { display: none !important; }
+  .paper { display: block !important; position: absolute; top: 0; left: 0; width: 100%; margin: 0; border: none; }
+  .paper table { border: 1px solid #000; width: 100%; }
+  .paper th { background: #eee; color: black; border: 1px solid #000; }
+  .paper td { border: 1px solid #000; color: black; }
+  @page { margin: 10mm; size: A4; }
+}
