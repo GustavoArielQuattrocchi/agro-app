@@ -32,7 +32,6 @@ function openDB() {
     };
     req.onsuccess = (e) => { 
         db=e.target.result; 
-        // Manejo de cierres inesperados
         db.onversionchange = () => { db.close(); alert("Nueva versión detectada. Recarga la página."); };
         resolve(db); 
     };
@@ -179,8 +178,7 @@ async function saveReceta() {
     $('#oc').value = data.oc;
     $('#ocVisible').textContent = displayOC(data.finca, data.oc);
     
-    // Guardar ID
-    if(!data.id) { /* Podríamos recargar aquí */ }
+    // Si la orden no tenía ID, aquí podríamos recargar, pero es opcional.
     
     data.items.forEach(it => {
       if(idbOk) tx('catalogo','readwrite').put({producto:it.producto, ia:it.ingredienteActivo, presentacion:it.presentacion, dosisHa:it.dosisHa});
@@ -232,7 +230,7 @@ async function syncToCloud(rec) {
     await supa.from('order_item').insert(itemsPayload);
   }
 
-  // B. BAJAR
+  // B. BAJAR (CON PARCHE DE ID SUCIO)
   setStatus('cloud', 'Descargando...', '#38bdf8');
   await downloadFromCloud();
 
@@ -246,18 +244,15 @@ async function downloadFromCloud() {
   
   if(!orders || orders.length === 0) return;
 
-  // 2. Preparar el MAPA de lo que ya tenemos localmente (Para evitar consultar la BD en el bucle)
-  //    Esto evita el error "Transaction closing" al usar await dentro de la tx
+  // 2. Preparar mapa local
   const currentLocals = await listRecetas();
   const mapLocals = new Map();
-  // Clave única: FINCA + OC
   currentLocals.forEach(r => mapLocals.set(`${r.finca}|${r.oc}`, r.id));
 
-  // 3. Abrir transacción UNA SOLA VEZ
+  // 3. Transacción atómica
   const txRW = db.transaction('recetas', 'readwrite');
   const store = txRW.objectStore('recetas');
 
-  // 4. Bucle rápido síncrono
   orders.forEach(o => {
     const key = `${o.finca}|${o.oc}`;
     const existingId = mapLocals.get(key);
@@ -277,15 +272,18 @@ async function downloadFromCloud() {
       }))
     };
 
-    if (existingId) {
-      localFormat.id = existingId; // Mantenemos ID local
+    // --- PARCHE CRÍTICO PARA IDB ---
+    // Solo asignamos el ID si es un número válido. Si no, dejamos que IDB cree uno nuevo.
+    if (existingId && typeof existingId === 'number' && !isNaN(existingId)) {
+      localFormat.id = existingId;
+    } else {
+      delete localFormat.id; // Nos aseguramos de que no haya basura
     }
+    // --------------------------------
     
-    // Put sin await (se encola en la transacción)
     store.put(localFormat);
   });
 
-  // 5. Esperar a que termine la transacción
   return new Promise((resolve, reject) => {
     txRW.oncomplete = () => resolve();
     txRW.onerror = () => reject(txRW.error);
@@ -346,6 +344,7 @@ async function renderListado() {
 function getFormData() {
   let rawId = $('#oc').dataset.id;
   let safeId = undefined;
+  // Validación estricta
   if (rawId && !isNaN(rawId) && Number(rawId) > 0) {
       safeId = Number(rawId);
   }
@@ -374,6 +373,7 @@ function setForm(r) {
   (r.items||[]).forEach(addItem);
   $('#ocVisible').textContent = displayOC(r.finca, r.oc);
   
+  // Limpieza de ID
   if(r.id) $('#oc').dataset.id = r.id;
   else delete $('#oc').dataset.id;
 
@@ -416,11 +416,18 @@ $('#btnGuardar').onclick = async () => {
 
 // 3. SYNC MANUAL
 $('#btnSync').onclick = async () => {
-    if(!$('#finca').value) return alert('Cargá o guardá una orden primero.');
+    // Permitir sync vacío para bajar datos
     showLoading();
     try {
-        await syncToCloud(getFormData());
-        setTimeout(() => { hideLoading(); alert('✅ Sync completado.'); }, 500);
+        // Si hay datos en pantalla, sube. Si no, solo descarga
+        const hayDatos = $('#finca').value;
+        if(hayDatos) await syncToCloud(getFormData());
+        else {
+             setStatus('cloud', 'Descargando...', '#38bdf8');
+             await downloadFromCloud();
+             setStatus('cloud', 'Sincronizado', '#22c55e');
+        }
+        setTimeout(() => { hideLoading(); alert('✅ Sincronización completa.'); }, 500);
     } catch(e) {
         hideLoading();
         alert('❌ Error: ' + e.message);
