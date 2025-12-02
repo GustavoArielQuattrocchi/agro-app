@@ -394,6 +394,44 @@ function setStatus(type, text, color) {
   const el = type==='cloud'?$('#cloudStatus'):$('#storageStatus');
   el.textContent = text; el.style.background = color;
 }
+/* ================= EXPORTAR EXCEL ================= */
+async function exportToCSV() {
+  const recipes = await listRecetas();
+  
+  if (!recipes || recipes.length === 0) {
+    return alert('No hay datos guardados para exportar.');
+  }
+
+  // Encabezados del Excel (usamos ; para que Excel en español lo reconozca bien)
+  let csvContent = "\uFEFF"; // BOM para que reconozca tildes y ñ
+  csvContent += "Fecha;OC;Finca;Cultivo;Manejo;Tractor;Tractorista;Vol.Maq;Producto;Ing.Activo;Presentacion;Dosis/Ha;Dosis/Maq;Obs\n";
+
+  // Recorremos cada orden
+  recipes.forEach(r => {
+    // Limpiamos textos para evitar errores con los puntos y comas
+    const clean = (txt) => String(txt || '').replace(/;/g, ' ').replace(/\n/g, ' ').trim();
+
+    // Si la orden no tiene items, creamos una fila solo con los datos generales
+    if (!r.items || r.items.length === 0) {
+       csvContent += `${r.fecha};${clean(r.oc)};${clean(r.finca)};${clean(r.cultivo)};${clean(r.manejo)};${clean(r.tractor)};${clean(r.tractorista)};${r.volumenMaquinaria};-;-;-;-;-;-\n`;
+    } else {
+       // Si tiene items, creamos una fila por cada producto (formato tabla dinámica)
+       r.items.forEach(item => {
+         csvContent += `${r.fecha};${clean(r.oc)};${clean(r.finca)};${clean(r.cultivo)};${clean(r.manejo)};${clean(r.tractor)};${clean(r.tractorista)};${r.volumenMaquinaria};${clean(item.producto)};${clean(item.ingredienteActivo)};${clean(item.presentacion)};${clean(item.dosisHa)};${clean(item.dosisMaquinada)};${clean(item.obs)}\n`;
+       });
+    }
+  });
+
+  // Crear archivo y descargar
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.setAttribute("href", url);
+  link.setAttribute("download", `Reporte_Ordenes_${todayISO()}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
 
 // 1. NUEVA
 $('#btnNueva').onclick = async () => { 
@@ -472,8 +510,9 @@ $('#btnPDF').onclick = () => {
   $('#printIndicaciones').textContent = d.indicaciones;
   window.print();
 };
-
-// 7. LOGIN
+// 7. EXCEL (NUEVO)
+$('#btnExcel').onclick = () => exportToCSV();
+// 8. LOGIN
 $('#btnLogin').onclick = () => $('#loginModal').classList.add('open');
 $('#btnCloseLogin').onclick = () => $('#loginModal').classList.remove('open');
 $('#btnSendMagicLink').onclick = async () => {
@@ -483,7 +522,7 @@ $('#btnSendMagicLink').onclick = async () => {
     if(!error) $('#loginModal').classList.remove('open');
 };
 
-// 8. SALIR
+// 9. SALIR
 $('#btnLogout').onclick = async () => {
     if(confirm('¿Cerrar sesión?')) {
         await supa.auth.signOut();
