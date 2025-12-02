@@ -115,3 +115,14 @@ td { padding: 8px; border-top: 1px solid #334155; vertical-align: top; }
   @page { margin: 10mm; size: A4; }
 }
 
+/* Botón Excel */
+.btn.excel {
+  background: #107c41; /* Verde Excel */
+  color: white;
+  border: 1px solid #0c5e31;
+}
+.btn.excel:hover {
+  background: #0c5e31;
+}
+
+
