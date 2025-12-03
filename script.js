@@ -501,13 +501,45 @@ $('#btnListado').onclick = () => { $('#modalListado').classList.add('open'); ren
 $('#btnCerrarListado').onclick = () => $('#modalListado').classList.remove('open');
 $('#q').addEventListener('input', renderListado);
 
-// 6. PDF
+// 6. PDF (Generador idéntico al documento)
 $('#btnPDF').onclick = () => {
   const d = getFormData();
-  $('#metaBox').innerHTML = `<div><strong>OC:</strong> ${displayOC(d.finca, d.oc)}</div><div><strong>Fecha:</strong> ${d.fecha}</div><div><strong>Finca:</strong> ${d.finca} (${d.cuartel})</div><div><strong>Tractor:</strong> ${d.tractor} (${d.tractorista})</div><div><strong>Vol. Maq:</strong> ${d.volumenMaquinaria}L</div>`;
-  const tbody = $('#printTable tbody'); tbody.innerHTML='';
-  d.items.forEach(it => tbody.innerHTML += `<tr><td>${it.producto}</td><td>${it.ingredienteActivo}</td><td>${it.presentacion}</td><td>${it.dosisMaquinada}</td><td>${it.obs}</td></tr>`);
-  $('#printIndicaciones').textContent = d.indicaciones;
+  
+  // Validar mínimo
+  if(!d.finca) return alert('Seleccioná una finca para imprimir.');
+
+  // A. Inyectar Cabecera (Meta Datos)
+  // Usamos el formato exacto del PDF: OC, Fecha, Finca, Tractor, Vol. Maq.
+  $('#metaBox').innerHTML = `
+    <div><strong>OC:</strong> ${displayOC(d.finca, d.oc)}</div>
+    <div><strong>Fecha:</strong> ${d.fecha.split('-').reverse().join('/')}</div> <div><strong>Finca:</strong> ${d.finca} ${d.cuartel ? `(Cuartel ${d.cuartel})` : ''}</div>
+    <div><strong>Tractor:</strong> ${d.tractor || '-'} ${d.tractorista ? `(${d.tractorista})` : ''}</div>
+    <div><strong>Vol. Maq:</strong> ${d.volumenMaquinaria ? d.volumenMaquinaria + ' L' : '-'}</div>
+    <div><strong>Vol. Aplicación:</strong> ${d.volumenAplicacion ? d.volumenAplicacion + ' L/ha' : '-'}</div>
+  `;
+
+  // B. Inyectar Tabla
+  const tbody = $('#printTable tbody'); 
+  tbody.innerHTML = '';
+  
+  d.items.forEach(it => {
+    tbody.innerHTML += `
+      <tr>
+        <td>${it.producto}</td>
+        <td>${it.ingredienteActivo || '-'}</td>
+        <td style="text-align:center">${it.presentacion || '-'}</td>
+        <td style="text-align:center; font-weight:bold">${it.dosisMaquinada || '-'}</td>
+        <td>${it.obs || ''}</td>
+      </tr>`;
+  });
+
+  // C. Inyectar Indicaciones
+  // Creamos un contenedor con borde como en los documentos formales
+  const indicacionesDiv = $('#printIndicaciones');
+  indicacionesDiv.innerHTML = d.indicaciones ? d.indicaciones : 'Sin indicaciones adicionales.';
+  indicacionesDiv.parentElement.className = 'indicaciones-box'; // Usamos la clase nueva del CSS
+
+  // D. Imprimir
   window.print();
 };
 // 7. EXCEL (NUEVO)
