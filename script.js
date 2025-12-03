@@ -44,15 +44,14 @@ async function catAll() { return idbOk ? new Promise(r=>{const a=[]; tx('catalog
 
 /* ================= LÓGICA DE NEGOCIO ================= */
 
-// CORRECCIÓN: Cálculo en tiempo real del próximo número (Sin caché)
+// Cálculo en tiempo real del próximo número (Sin caché)
 async function sugerirProximoOC(finca) {
   if (!finca) return '';
-  const todas = await listRecetas(); // Trae todo lo local
+  const todas = await listRecetas(); 
   const deEstaFinca = todas.filter(r => r.finca === finca);
   
   let maximo = 0;
   deEstaFinca.forEach(r => {
-    // Convertimos "000015" a 15, ignorando basura
     const n = parseInt(r.oc, 10);
     if (!isNaN(n) && n > maximo) maximo = n;
   });
@@ -145,7 +144,6 @@ async function saveReceta() {
     // 1. Generar OC si es nueva o 0
     let ocNum = Number(data.oc.replace(/^0+/,'')) || 0;
     if(ocNum <= 0) {
-      // Usamos la nueva lógica directa
       const next = await sugerirProximoOC(data.finca);
       data.oc = next;
     }
@@ -227,15 +225,12 @@ async function syncToCloud(rec) {
 }
 
 async function downloadFromCloud() {
-  // Descargar todo de la nube
   const { data: orders, error } = await supa.from('order_cura').select('*, order_item(*)');
   if(error) { console.error("Error bajando:", error); return; }
   if(!orders || orders.length === 0) return;
 
-  // Mapa local para evitar colisiones
   const currentLocals = await listRecetas();
   const mapLocals = new Map();
-  // Mapa por Finca + OC para encontrar duplicados
   currentLocals.forEach(r => mapLocals.set(`${r.finca}|${r.oc}`, r.id));
 
   const txRW = db.transaction('recetas', 'readwrite');
@@ -276,7 +271,7 @@ async function downloadFromCloud() {
   });
 }
 
-/* ================= BUSCADOR ================= */
+/* ================= BUSCADOR & EXPORTACIÓN ================= */
 async function listRecetas() {
     if(!idbOk) return JSON.parse(localStorage.getItem(LS_KEYS.recetas)||'[]');
     return new Promise(r => { 
@@ -326,14 +321,89 @@ async function renderListado() {
     });
 }
 
+async function exportToCSV() {
+  const recipes = await listRecetas();
+  if (!recipes || recipes.length === 0) return alert('No hay datos guardados.');
+
+  let csvContent = "\uFEFF"; // BOM
+  csvContent += "Fecha;OC;Finca;Cultivo;Manejo;Tractor;Tractorista;Vol.Maq;Producto;Ing.Activo;Presentacion;Dosis/Ha;Dosis/Maq;Obs\n";
+
+  recipes.forEach(r => {
+    const clean = (txt) => String(txt || '').replace(/;/g, ' ').replace(/\n/g, ' ').trim();
+    if (!r.items || r.items.length === 0) {
+       csvContent += `${r.fecha};${clean(r.oc)};${clean(r.finca)};${clean(r.cultivo)};${clean(r.manejo)};${clean(r.tractor)};${clean(r.tractorista)};${r.volumenMaquinaria};-;-;-;-;-;-\n`;
+    } else {
+       r.items.forEach(item => {
+         csvContent += `${r.fecha};${clean(r.oc)};${clean(r.finca)};${clean(r.cultivo)};${clean(r.manejo)};${clean(r.tractor)};${clean(r.tractorista)};${r.volumenMaquinaria};${clean(item.producto)};${clean(item.ingredienteActivo)};${clean(item.presentacion)};${clean(item.dosisHa)};${clean(item.dosisMaquinada)};${clean(item.obs)}\n`;
+       });
+    }
+  });
+
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.setAttribute("href", url);
+  link.setAttribute("download", `Reporte_Ordenes_${todayISO()}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+/* ================= GESTIÓN DE CATÁLOGO ================= */
+async function renderCatalogList() {
+    const listDiv = $('#listaCatalogo');
+    const filter = $('#qCat').value.toLowerCase();
+    
+    listDiv.innerHTML = '<div style="padding:20px; text-align:center">Cargando...</div>';
+    const all = await catAll();
+    const filtered = all.filter(p => p.producto.toLowerCase().includes(filter)).sort((a,b) => a.producto.localeCompare(b.producto));
+
+    listDiv.innerHTML = '';
+    if (filtered.length === 0) {
+        listDiv.innerHTML = '<div style="padding:20px; text-align:center; color:#94a3b8">No hay productos.</div>';
+        return;
+    }
+
+    filtered.forEach(p => {
+        const div = document.createElement('div');
+        div.className = 'cat-item';
+        div.innerHTML = `
+            <div>
+                <div class="cat-name">${p.producto}</div>
+                <div class="cat-info">${p.ia || '-'} | ${p.dosisHa || '-'}</div>
+            </div>
+            <button class="btn-trash" title="Borrar">🗑️</button>
+        `;
+        div.querySelector('.btn-trash').onclick = async () => {
+            if(confirm(`¿Borrar "${p.producto}"?`)) {
+                await deleteProduct(p.producto);
+                renderCatalogList();
+                refreshGlobalDatalist();
+            }
+        };
+        listDiv.appendChild(div);
+    });
+}
+
+async function deleteProduct(name) {
+    if(idbOk) await idbOp(tx('catalogo', 'readwrite').delete(name));
+    else {
+        let arr = JSON.parse(localStorage.getItem(LS_KEYS.catalogo)||'[]');
+        arr = arr.filter(x => x.producto !== name);
+        localStorage.setItem(LS_KEYS.catalogo, JSON.stringify(arr));
+    }
+}
+
+async function refreshGlobalDatalist() {
+    const prods = await catAll();
+    $('#dlProductos').innerHTML = prods.map(p => `<option value="${p.producto}">`).join('');
+}
+
 /* ================= EVENTOS DE BOTONES ================= */
 function getFormData() {
   let rawId = $('#oc').dataset.id;
   let safeId = undefined;
-  // Validación estricta para no romper la BD
-  if (rawId && !isNaN(rawId) && Number(rawId) > 0) {
-      safeId = Number(rawId);
-  }
+  if (rawId && !isNaN(rawId) && Number(rawId) > 0) safeId = Number(rawId);
 
   return {
     id: safeId,
@@ -347,9 +417,7 @@ function getFormData() {
   };
 }
 
-// LÓGICA DE BLOQUEO (SOLO LECTURA)
 function setForm(r) {
-  // 1. Cargar datos
   $('#oc').value = r.oc||''; $('#fecha').value = r.fecha||todayISO();
   $('#finca').value = r.finca||''; $('#cultivo').value = r.cultivo||'';
   $('#manejo').value = r.manejo||''; $('#tecnico').value = r.tecnico||'';
@@ -367,15 +435,12 @@ function setForm(r) {
   if(r.manejo === 'Orgánico') document.body.classList.add('organic'); else document.body.classList.remove('organic');
   recalcDosisMaquinada();
 
-  // 2. BLOQUEAR SI YA EXISTE (ID > 0)
   if (r.id) {
       $$('input, select, textarea').forEach(el => el.disabled = true);
       $('#btnGuardar').style.display = 'none';
       $('#addItem').style.display = 'none';
       $('#clearItems').style.display = 'none';
       $$('.btnDel').forEach(b => b.style.display = 'none');
-      
-      // Marca visual
       $('#ocVisible').innerHTML = `${displayOC(r.finca, r.oc)} <span style="color:#ef4444; font-size:0.8em; margin-left:5px">🔒 CERRADA</span>`;
   } else {
       desbloquearFormulario();
@@ -384,7 +449,7 @@ function setForm(r) {
 
 function desbloquearFormulario() {
     $$('input, select, textarea').forEach(el => el.disabled = false);
-    $('#oc').readOnly = true; // OC siempre ReadOnly
+    $('#oc').readOnly = true; 
     $('#btnGuardar').style.display = ''; 
     $('#addItem').style.display = '';
     $('#clearItems').style.display = '';
@@ -394,58 +459,15 @@ function setStatus(type, text, color) {
   const el = type==='cloud'?$('#cloudStatus'):$('#storageStatus');
   el.textContent = text; el.style.background = color;
 }
-/* ================= EXPORTAR EXCEL ================= */
-async function exportToCSV() {
-  const recipes = await listRecetas();
-  
-  if (!recipes || recipes.length === 0) {
-    return alert('No hay datos guardados para exportar.');
-  }
-
-  // Encabezados del Excel (usamos ; para que Excel en español lo reconozca bien)
-  let csvContent = "\uFEFF"; // BOM para que reconozca tildes y ñ
-  csvContent += "Fecha;OC;Finca;Cultivo;Manejo;Tractor;Tractorista;Vol.Maq;Producto;Ing.Activo;Presentacion;Dosis/Ha;Dosis/Maq;Obs\n";
-
-  // Recorremos cada orden
-  recipes.forEach(r => {
-    // Limpiamos textos para evitar errores con los puntos y comas
-    const clean = (txt) => String(txt || '').replace(/;/g, ' ').replace(/\n/g, ' ').trim();
-
-    // Si la orden no tiene items, creamos una fila solo con los datos generales
-    if (!r.items || r.items.length === 0) {
-       csvContent += `${r.fecha};${clean(r.oc)};${clean(r.finca)};${clean(r.cultivo)};${clean(r.manejo)};${clean(r.tractor)};${clean(r.tractorista)};${r.volumenMaquinaria};-;-;-;-;-;-\n`;
-    } else {
-       // Si tiene items, creamos una fila por cada producto (formato tabla dinámica)
-       r.items.forEach(item => {
-         csvContent += `${r.fecha};${clean(r.oc)};${clean(r.finca)};${clean(r.cultivo)};${clean(r.manejo)};${clean(r.tractor)};${clean(r.tractorista)};${r.volumenMaquinaria};${clean(item.producto)};${clean(item.ingredienteActivo)};${clean(item.presentacion)};${clean(item.dosisHa)};${clean(item.dosisMaquinada)};${clean(item.obs)}\n`;
-       });
-    }
-  });
-
-  // Crear archivo y descargar
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.setAttribute("href", url);
-  link.setAttribute("download", `Reporte_Ordenes_${todayISO()}.csv`);
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-}
 
 // 1. NUEVA
 $('#btnNueva').onclick = async () => { 
     setForm({items:[]}); 
-    
-    // Forzamos desbloqueo
     desbloquearFormulario();
-
     $('#oc').value=''; 
     delete $('#oc').dataset.id; 
     delete $('#oc').dataset.owner;
     $('#ocVisible').textContent='—'; 
-    
-    // Sugerencia inmediata si hay finca
     const finca = $('#finca').value;
     if(finca) {
         const next = await sugerirProximoOC(finca);
@@ -458,8 +480,9 @@ $('#btnNueva').onclick = async () => {
 $('#btnGuardar').onclick = async () => {
     if(!$('#finca').value) return alert('⚠️ Seleccioná FINCA');
     if(!$('#cultivo').value) return alert('⚠️ Seleccioná CULTIVO');
-    // Ya no es necesario verificar dueño porque el botón desaparece, 
-    // pero dejamos la seguridad por si acaso.
+    const { data: { session } } = await supa.auth.getSession();
+    const ownerDeLaOrden = $('#oc').dataset.owner;
+    if (ownerDeLaOrden && session && ownerDeLaOrden !== session.user.id) return alert("⛔ No autorizado.");
     await saveReceta();
 };
 
@@ -468,9 +491,7 @@ $('#btnSync').onclick = async () => {
     showLoading();
     try {
         const hayDatos = $('#finca').value;
-        // Solo intentamos subir si es una orden NUEVA (sin ID)
         const esNueva = !$('#oc').dataset.id;
-        
         if(hayDatos && esNueva) await syncToCloud(getFormData());
         else {
              setStatus('cloud', 'Descargando...', '#38bdf8');
@@ -487,8 +508,6 @@ $('#btnSync').onclick = async () => {
 // 4. ITEMS & CAMBIOS
 $('#addItem').onclick = () => addItem();
 $('#clearItems').onclick = () => { $('#items tbody').innerHTML=''; addItem(); };
-
-// Cambio Finca: Calcula ID real
 $('#finca').onchange = async (e) => { 
     const n = await sugerirProximoOC(e.target.value); 
     $('#oc').value = n; 
@@ -501,193 +520,81 @@ $('#btnListado').onclick = () => { $('#modalListado').classList.add('open'); ren
 $('#btnCerrarListado').onclick = () => $('#modalListado').classList.remove('open');
 $('#q').addEventListener('input', renderListado);
 
-// 6. PDF (Generador idéntico al documento)
+// 6. PDF
 $('#btnPDF').onclick = () => {
   const d = getFormData();
-  
-  // Validar mínimo
-  if(!d.finca) return alert('Seleccioná una finca para imprimir.');
-
-  // A. Inyectar Cabecera (Meta Datos)
-  // Usamos el formato exacto del PDF: OC, Fecha, Finca, Tractor, Vol. Maq.
+  if(!d.finca) return alert('Seleccioná una finca.');
   $('#metaBox').innerHTML = `
     <div><strong>OC:</strong> ${displayOC(d.finca, d.oc)}</div>
-    <div><strong>Fecha:</strong> ${d.fecha.split('-').reverse().join('/')}</div> <div><strong>Finca:</strong> ${d.finca} ${d.cuartel ? `(Cuartel ${d.cuartel})` : ''}</div>
+    <div><strong>Fecha:</strong> ${d.fecha.split('-').reverse().join('/')}</div>
+    <div><strong>Finca:</strong> ${d.finca} ${d.cuartel ? `(Cuartel ${d.cuartel})` : ''}</div>
     <div><strong>Tractor:</strong> ${d.tractor || '-'} ${d.tractorista ? `(${d.tractorista})` : ''}</div>
     <div><strong>Vol. Maq:</strong> ${d.volumenMaquinaria ? d.volumenMaquinaria + ' L' : '-'}</div>
     <div><strong>Vol. Aplicación:</strong> ${d.volumenAplicacion ? d.volumenAplicacion + ' L/ha' : '-'}</div>
   `;
-
-  // B. Inyectar Tabla
-  const tbody = $('#printTable tbody'); 
-  tbody.innerHTML = '';
-  
+  const tbody = $('#printTable tbody'); tbody.innerHTML='';
   d.items.forEach(it => {
-    tbody.innerHTML += `
-      <tr>
-        <td>${it.producto}</td>
-        <td>${it.ingredienteActivo || '-'}</td>
-        <td style="text-align:center">${it.presentacion || '-'}</td>
-        <td style="text-align:center; font-weight:bold">${it.dosisMaquinada || '-'}</td>
-        <td>${it.obs || ''}</td>
-      </tr>`;
+    tbody.innerHTML += `<tr><td>${it.producto}</td><td>${it.ingredienteActivo || '-'}</td><td style="text-align:center">${it.presentacion || '-'}</td><td style="text-align:center; font-weight:bold">${it.dosisMaquinada || '-'}</td><td>${it.obs || ''}</td></tr>`;
   });
-
-  // C. Inyectar Indicaciones
-  // Creamos un contenedor con borde como en los documentos formales
   const indicacionesDiv = $('#printIndicaciones');
   indicacionesDiv.innerHTML = d.indicaciones ? d.indicaciones : 'Sin indicaciones adicionales.';
-  indicacionesDiv.parentElement.className = 'indicaciones-box'; // Usamos la clase nueva del CSS
-
-  // D. Imprimir
+  indicacionesDiv.parentElement.className = 'indicaciones-box';
   window.print();
 };
-// 7. EXCEL (NUEVO)
+
+// 7. EXCEL
 $('#btnExcel').onclick = () => exportToCSV();
-// 8. LOGIN (SISTEMA DE CÓDIGO 6 DÍGITOS)
+
+// 8. CATÁLOGO
+$('#btnCatalogo').onclick = () => { $('#modalCatalogo').classList.add('open'); renderCatalogList(); };
+$('#btnCloseCat').onclick = () => $('#modalCatalogo').classList.remove('open');
+$('#qCat').addEventListener('input', renderCatalogList);
+
+// 9. LOGIN (MODO OTP CÓDIGO)
 $('#btnLogin').onclick = () => {
     $('#loginModal').classList.add('open');
-    // Reiniciar estado visual
     $('#loginStep1').style.display = 'block';
     $('#loginStep2').style.display = 'none';
     $('#loginEmail').value = '';
     $('#loginToken').value = '';
 };
-
 $('#btnCloseLogin').onclick = () => $('#loginModal').classList.remove('open');
 
-// A. Enviar el código al correo
 $('#btnSendCode').onclick = async () => {
     const email = $('#loginEmail').value.trim();
-    if(!email) return alert('Ingresá un email válido');
-    
-    // Cambiar texto botón para feedback
-    const btn = $('#btnSendCode');
-    btn.textContent = 'Enviando...';
-    btn.disabled = true;
-
+    if(!email) return alert('Ingresá un email');
+    const btn = $('#btnSendCode'); btn.textContent = 'Enviando...'; btn.disabled = true;
     const { error } = await supa.auth.signInWithOtp({ email });
-    
-    btn.textContent = 'Enviar Código';
-    btn.disabled = false;
-
-    if(error) {
-        alert('Error: ' + error.message);
-    } else {
-        // Pasar al paso 2
+    btn.textContent = 'Enviar Código'; btn.disabled = false;
+    if(error) alert('Error: ' + error.message);
+    else {
         $('#loginStep1').style.display = 'none';
         $('#loginStep2').style.display = 'block';
         $('#loginToken').focus();
     }
 };
 
-// B. Verificar el código ingresado
 $('#btnVerifyCode').onclick = async () => {
     const email = $('#loginEmail').value.trim();
     const token = $('#loginToken').value.trim();
-    
-    if(!token) return alert('Ingresá el código de 6 números');
-
-    const { data, error } = await supa.auth.verifyOtp({
-        email,
-        token,
-        type: 'email'
-    });
-
-    if(error) {
-        alert('Código incorrecto o expirado. Intenta de nuevo.');
-    } else {
+    if(!token) return alert('Ingresá el código');
+    const { error } = await supa.auth.verifyOtp({ email, token, type: 'email' });
+    if(error) alert('Código incorrecto.');
+    else {
         alert('¡Bienvenido!');
         $('#loginModal').classList.remove('open');
-        window.location.reload(); // Recargar para actualizar la interfaz
+        window.location.reload();
     }
 };
+$('#btnBackToEmail').onclick = () => { $('#loginStep1').style.display = 'block'; $('#loginStep2').style.display = 'none'; };
 
-// C. Botón volver (por si se equivocó de mail)
-$('#btnBackToEmail').onclick = () => {
-    $('#loginStep1').style.display = 'block';
-    $('#loginStep2').style.display = 'none';
-};
-
-// 9. SALIR
+// 10. SALIR
 $('#btnLogout').onclick = async () => {
     if(confirm('¿Cerrar sesión?')) {
         await supa.auth.signOut();
         window.location.reload();
     }
 };
-/* ================= GESTIÓN DE CATÁLOGO ================= */
-
-// Renderizar la lista de productos
-async function renderCatalogList() {
-    const listDiv = $('#listaCatalogo');
-    const filter = $('#qCat').value.toLowerCase();
-    
-    listDiv.innerHTML = '<div style="padding:20px; text-align:center">Cargando...</div>';
-    
-    // Traer todos los productos
-    const all = await catAll();
-    
-    // Filtrar y ordenar
-    const filtered = all
-        .filter(p => p.producto.toLowerCase().includes(filter))
-        .sort((a,b) => a.producto.localeCompare(b.producto));
-
-    listDiv.innerHTML = '';
-    
-    if (filtered.length === 0) {
-        listDiv.innerHTML = '<div style="padding:20px; text-align:center; color:#94a3b8">No hay productos.</div>';
-        return;
-    }
-
-    filtered.forEach(p => {
-        const div = document.createElement('div');
-        div.className = 'cat-item';
-        div.innerHTML = `
-            <div>
-                <div class="cat-name">${p.producto}</div>
-                <div class="cat-info">${p.ia || '-'} | ${p.dosisHa || '-'}</div>
-            </div>
-            <button class="btn-trash" title="Borrar">🗑️</button>
-        `;
-        
-        // Lógica de borrado
-        div.querySelector('.btn-trash').onclick = async () => {
-            if(confirm(`¿Borrar "${p.producto}" del autocompletado?`)) {
-                await deleteProduct(p.producto);
-                renderCatalogList(); // Recargar lista
-                refreshGlobalDatalist(); // Actualizar el autocompletar principal
-            }
-        };
-        
-        listDiv.appendChild(div);
-    });
-}
-
-// Borrar de la base de datos
-async function deleteProduct(name) {
-    if(idbOk) {
-        await idbOp(tx('catalogo', 'readwrite').delete(name));
-    } else {
-        let arr = JSON.parse(localStorage.getItem(LS_KEYS.catalogo)||'[]');
-        arr = arr.filter(x => x.producto !== name);
-        localStorage.setItem(LS_KEYS.catalogo, JSON.stringify(arr));
-    }
-}
-
-// Refrescar el <datalist> principal para que deje de sugerir lo borrado
-async function refreshGlobalDatalist() {
-    const prods = await catAll();
-    $('#dlProductos').innerHTML = prods.map(p => `<option value="${p.producto}">`).join('');
-}
-
-// --- EVENTOS DEL CATÁLOGO ---
-$('#btnCatalogo').onclick = () => { 
-    $('#modalCatalogo').classList.add('open'); 
-    renderCatalogList(); 
-};
-$('#btnCloseCat').onclick = () => $('#modalCatalogo').classList.remove('open');
-$('#qCat').addEventListener('input', renderCatalogList);
 
 /* ================= INIT ================= */
 (async function() {
@@ -705,6 +612,7 @@ $('#qCat').addEventListener('input', renderCatalogList);
       $('#btnLogout').style.display='inline-block'; 
   }
 })();
+
 
 
 
