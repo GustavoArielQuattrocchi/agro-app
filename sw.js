@@ -1,4 +1,4 @@
-const CACHE_NAME = "orden-cura-v9";
+const CACHE_NAME = "orden-cura-v10";
 const ASSETS = [
   "/",
   "/index.html",
@@ -39,6 +39,7 @@ self.addEventListener("fetch", (e) => {
   );
 
 });
+
 
 
 
