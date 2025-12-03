@@ -544,14 +544,69 @@ $('#btnPDF').onclick = () => {
 };
 // 7. EXCEL (NUEVO)
 $('#btnExcel').onclick = () => exportToCSV();
-// 8. LOGIN
-$('#btnLogin').onclick = () => $('#loginModal').classList.add('open');
+// 8. LOGIN (SISTEMA DE CÓDIGO 6 DÍGITOS)
+$('#btnLogin').onclick = () => {
+    $('#loginModal').classList.add('open');
+    // Reiniciar estado visual
+    $('#loginStep1').style.display = 'block';
+    $('#loginStep2').style.display = 'none';
+    $('#loginEmail').value = '';
+    $('#loginToken').value = '';
+};
+
 $('#btnCloseLogin').onclick = () => $('#loginModal').classList.remove('open');
-$('#btnSendMagicLink').onclick = async () => {
-    const email = $('#loginEmail').value;
+
+// A. Enviar el código al correo
+$('#btnSendCode').onclick = async () => {
+    const email = $('#loginEmail').value.trim();
+    if(!email) return alert('Ingresá un email válido');
+    
+    // Cambiar texto botón para feedback
+    const btn = $('#btnSendCode');
+    btn.textContent = 'Enviando...';
+    btn.disabled = true;
+
     const { error } = await supa.auth.signInWithOtp({ email });
-    alert(error ? error.message : '¡Enlace enviado!');
-    if(!error) $('#loginModal').classList.remove('open');
+    
+    btn.textContent = 'Enviar Código';
+    btn.disabled = false;
+
+    if(error) {
+        alert('Error: ' + error.message);
+    } else {
+        // Pasar al paso 2
+        $('#loginStep1').style.display = 'none';
+        $('#loginStep2').style.display = 'block';
+        $('#loginToken').focus();
+    }
+};
+
+// B. Verificar el código ingresado
+$('#btnVerifyCode').onclick = async () => {
+    const email = $('#loginEmail').value.trim();
+    const token = $('#loginToken').value.trim();
+    
+    if(!token) return alert('Ingresá el código de 6 números');
+
+    const { data, error } = await supa.auth.verifyOtp({
+        email,
+        token,
+        type: 'email'
+    });
+
+    if(error) {
+        alert('Código incorrecto o expirado. Intenta de nuevo.');
+    } else {
+        alert('¡Bienvenido!');
+        $('#loginModal').classList.remove('open');
+        window.location.reload(); // Recargar para actualizar la interfaz
+    }
+};
+
+// C. Botón volver (por si se equivocó de mail)
+$('#btnBackToEmail').onclick = () => {
+    $('#loginStep1').style.display = 'block';
+    $('#loginStep2').style.display = 'none';
 };
 
 // 9. SALIR
