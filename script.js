@@ -529,6 +529,78 @@ $('#btnLogout').onclick = async () => {
         window.location.reload();
     }
 };
+/* ================= GESTIÓN DE CATÁLOGO ================= */
+
+// Renderizar la lista de productos
+async function renderCatalogList() {
+    const listDiv = $('#listaCatalogo');
+    const filter = $('#qCat').value.toLowerCase();
+    
+    listDiv.innerHTML = '<div style="padding:20px; text-align:center">Cargando...</div>';
+    
+    // Traer todos los productos
+    const all = await catAll();
+    
+    // Filtrar y ordenar
+    const filtered = all
+        .filter(p => p.producto.toLowerCase().includes(filter))
+        .sort((a,b) => a.producto.localeCompare(b.producto));
+
+    listDiv.innerHTML = '';
+    
+    if (filtered.length === 0) {
+        listDiv.innerHTML = '<div style="padding:20px; text-align:center; color:#94a3b8">No hay productos.</div>';
+        return;
+    }
+
+    filtered.forEach(p => {
+        const div = document.createElement('div');
+        div.className = 'cat-item';
+        div.innerHTML = `
+            <div>
+                <div class="cat-name">${p.producto}</div>
+                <div class="cat-info">${p.ia || '-'} | ${p.dosisHa || '-'}</div>
+            </div>
+            <button class="btn-trash" title="Borrar">🗑️</button>
+        `;
+        
+        // Lógica de borrado
+        div.querySelector('.btn-trash').onclick = async () => {
+            if(confirm(`¿Borrar "${p.producto}" del autocompletado?`)) {
+                await deleteProduct(p.producto);
+                renderCatalogList(); // Recargar lista
+                refreshGlobalDatalist(); // Actualizar el autocompletar principal
+            }
+        };
+        
+        listDiv.appendChild(div);
+    });
+}
+
+// Borrar de la base de datos
+async function deleteProduct(name) {
+    if(idbOk) {
+        await idbOp(tx('catalogo', 'readwrite').delete(name));
+    } else {
+        let arr = JSON.parse(localStorage.getItem(LS_KEYS.catalogo)||'[]');
+        arr = arr.filter(x => x.producto !== name);
+        localStorage.setItem(LS_KEYS.catalogo, JSON.stringify(arr));
+    }
+}
+
+// Refrescar el <datalist> principal para que deje de sugerir lo borrado
+async function refreshGlobalDatalist() {
+    const prods = await catAll();
+    $('#dlProductos').innerHTML = prods.map(p => `<option value="${p.producto}">`).join('');
+}
+
+// --- EVENTOS DEL CATÁLOGO ---
+$('#btnCatalogo').onclick = () => { 
+    $('#modalCatalogo').classList.add('open'); 
+    renderCatalogList(); 
+};
+$('#btnCloseCat').onclick = () => $('#modalCatalogo').classList.remove('open');
+$('#qCat').addEventListener('input', renderCatalogList);
 
 /* ================= INIT ================= */
 (async function() {
