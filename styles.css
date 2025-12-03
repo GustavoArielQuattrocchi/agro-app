@@ -124,5 +124,40 @@ td { padding: 8px; border-top: 1px solid #334155; vertical-align: top; }
 .btn.excel:hover {
   background: #0c5e31;
 }
+/* Estilos del Catálogo */
+.cat-list {
+  max-height: 60vh;
+  overflow-y: auto;
+  border: 1px solid #334155;
+  border-radius: 8px;
+}
+
+.cat-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  border-bottom: 1px solid #1e293b;
+  background: #0f172a;
+}
+
+.cat-item:last-child { border-bottom: none; }
+.cat-item:hover { background: #1e293b; }
+
+.cat-name { font-size: 0.95rem; color: #e2e8f0; }
+.cat-info { font-size: 0.8rem; color: #94a3b8; margin-top: 2px; }
+
+/* Botón de borrar (tacho de basura) */
+.btn-trash {
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 8px;
+  color: #ef4444;
+  transition: transform 0.1s;
+}
+.btn-trash:active { transform: scale(0.8); }
+
 
 
