@@ -124,6 +124,7 @@
       <div class="tools no-print">
         <span class="factor" id="factorChip">Factor: —</span>
         <div class="right">
+          <button class="btn small" id="btnCatalogo" style="background:#475569; color:white">⚙️ Catálogo</button>
           <button class="btn small light" id="addItem">+ Item</button>
           <button class="btn small danger" id="clearItems">Vaciar</button>
         </div>
@@ -203,6 +204,34 @@
     <div style="text-align:center; color:white;">
       <div class="spinner"></div>
       <h3 style="margin-top:20px">Procesando...</h3>
+    </div>
+  </div>
+  <section class="card">
+      <h2>Productos</h2>
+      <div class="tools no-print">
+        <span class="factor" id="factorChip">Factor: —</span>
+        <div class="right">
+          <button class="btn small" id="btnCatalogo" style="background:#475569; color:white">⚙️ Catálogo</button> 
+          
+          <button class="btn small light" id="addItem">+ Item</button>
+          <button class="btn small danger" id="clearItems">Vaciar</button>
+        </div>
+      </div>
+  <div class="modal" id="modalCatalogo">
+    <div class="sheet">
+      <h3>Gestionar Productos</h3>
+      <p style="color:#94a3b8; font-size:0.9rem; margin-bottom:15px">
+        Estos son los productos que el sistema aprendió. Borrá los que estén mal escritos o duplicados.
+      </p>
+      
+      <input id="qCat" type="text" class="tbl-input" placeholder="Filtrar productos..." style="margin-bottom:10px" />
+      
+      <div class="cat-list" id="listaCatalogo">
+        </div>
+
+      <div style="text-align:right; margin-top:15px">
+        <button class="btn light" id="btnCloseCat">Cerrar</button>
+      </div>
     </div>
   </div>
   
