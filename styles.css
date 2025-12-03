@@ -69,7 +69,7 @@ header .btns::-webkit-scrollbar { display: none; }
 .btn.excel:hover { background: #15803d; }
 .btn.small { padding: 8px 12px; font-size: 0.85rem; border-radius: var(--radius-sm); }
 
-/* ================= LAYOUT MEJORADO (Solución Solapamiento) ================= */
+/* ================= LAYOUT ================= */
 main {
   max-width: 1200px;
   margin: 30px auto 100px; /* Más margen arriba y abajo */
@@ -84,11 +84,11 @@ main {
   margin-bottom: 24px; /* Espacio antes de la tarjeta de Productos */
 }
 
-/* Escritorio: 2 columnas solo si la pantalla es ancha */
+/* Escritorio: 2 columnas iguales */
 @media(min-width: 1024px) { 
   .grid { 
     grid-template-columns: 1fr 1fr; 
-    align-items: start; /* Evita que se estiren y solapen */
+    align-items: stretch; /* <--- ESTO hace que midan lo mismo de alto */
   } 
 }
 
@@ -97,7 +97,13 @@ main {
   border: 1px solid var(--border);
   border-radius: 16px;
   padding: 24px;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3); /* Sombra más fuerte para separar */
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+  
+  /* --- NUEVAS REGLAS PARA ALTURA IGUAL --- */
+  height: 100%;            /* Ocupar todo el alto de la celda */
+  display: flex;           /* Convertir la tarjeta en contenedor flexible */
+  flex-direction: column;  /* Ordenar contenido de arriba a abajo */
+  justify-content: flex-start; 
 }
 
 .card h2 {
@@ -186,6 +192,7 @@ tr:last-child td { border-bottom: none; }
   .paper th, .paper td { border: 1px solid #000; padding: 6px; color: black; }
   @page { margin: 15mm; size: A4; }
 }
+
 
 
 
