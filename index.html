@@ -162,10 +162,21 @@
   <div class="modal" id="loginModal">
     <div class="sheet">
       <h3>Iniciar sesión</h3>
-      <p>Ingresá tu email.</p>
-      <input id="loginEmail" type="email" class="tbl-input" placeholder="email@ejemplo.com" style="margin-bottom:10px" />
-      <button class="btn primary" id="btnSendMagicLink">Enviar enlace</button>
-      <button class="btn light" id="btnCloseLogin">Cancelar</button>
+      
+      <div id="loginStep1">
+        <p>Ingresá tu email para recibir el código.</p>
+        <input id="loginEmail" type="email" class="tbl-input" placeholder="tucorreo@empresa.com" style="margin-bottom:10px" />
+        <button class="btn primary" id="btnSendCode">Enviar Código</button>
+        <button class="btn light" id="btnCloseLogin">Cancelar</button>
+      </div>
+
+      <div id="loginStep2" style="display:none">
+        <p>Te enviamos un código a tu correo.</p>
+        <input id="loginToken" type="number" class="tbl-input" placeholder="Ej: 123456" style="margin-bottom:10px; letter-spacing: 5px; font-size: 1.2rem; text-align:center" />
+        <button class="btn primary" id="btnVerifyCode">Entrar</button>
+        <button class="btn light" id="btnBackToEmail">Volver</button>
+      </div>
+
     </div>
   </div>
 
@@ -203,6 +214,7 @@
   </script>
 </body>
 </html>
+
 
 
 
