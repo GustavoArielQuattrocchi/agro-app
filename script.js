@@ -520,25 +520,45 @@ $('#btnListado').onclick = () => { $('#modalListado').classList.add('open'); ren
 $('#btnCerrarListado').onclick = () => $('#modalListado').classList.remove('open');
 $('#q').addEventListener('input', renderListado);
 
-// 6. PDF
+// 6. PDF (Actualizado con Tipo de Manejo)
 $('#btnPDF').onclick = () => {
   const d = getFormData();
-  if(!d.finca) return alert('Seleccioná una finca.');
+  
+  if(!d.finca) return alert('Seleccioná una finca para imprimir.');
+
+  // A. Inyectar Cabecera (Meta Datos)
   $('#metaBox').innerHTML = `
     <div><strong>OC:</strong> ${displayOC(d.finca, d.oc)}</div>
     <div><strong>Fecha:</strong> ${d.fecha.split('-').reverse().join('/')}</div>
+    
     <div><strong>Finca:</strong> ${d.finca} ${d.cuartel ? `(Cuartel ${d.cuartel})` : ''}</div>
-    <div><strong>Tractor:</strong> ${d.tractor || '-'} ${d.tractorista ? `(${d.tractorista})` : ''}</div>
+    <div><strong>Manejo:</strong> ${d.manejo || '-'}</div> <div><strong>Tractor:</strong> ${d.tractor || '-'} ${d.tractorista ? `(${d.tractorista})` : ''}</div>
     <div><strong>Vol. Maq:</strong> ${d.volumenMaquinaria ? d.volumenMaquinaria + ' L' : '-'}</div>
+    
     <div><strong>Vol. Aplicación:</strong> ${d.volumenAplicacion ? d.volumenAplicacion + ' L/ha' : '-'}</div>
-  `;
-  const tbody = $('#printTable tbody'); tbody.innerHTML='';
+    <div><strong>Cultivo:</strong> ${d.cultivo || '-'}</div> `;
+
+  // B. Inyectar Tabla
+  const tbody = $('#printTable tbody'); 
+  tbody.innerHTML = '';
+  
   d.items.forEach(it => {
-    tbody.innerHTML += `<tr><td>${it.producto}</td><td>${it.ingredienteActivo || '-'}</td><td style="text-align:center">${it.presentacion || '-'}</td><td style="text-align:center; font-weight:bold">${it.dosisMaquinada || '-'}</td><td>${it.obs || ''}</td></tr>`;
+    tbody.innerHTML += `
+      <tr>
+        <td>${it.producto}</td>
+        <td>${it.ingredienteActivo || '-'}</td>
+        <td style="text-align:center">${it.presentacion || '-'}</td>
+        <td style="text-align:center; font-weight:bold">${it.dosisMaquinada || '-'}</td>
+        <td>${it.obs || ''}</td>
+      </tr>`;
   });
+
+  // C. Inyectar Indicaciones
   const indicacionesDiv = $('#printIndicaciones');
   indicacionesDiv.innerHTML = d.indicaciones ? d.indicaciones : 'Sin indicaciones adicionales.';
   indicacionesDiv.parentElement.className = 'indicaciones-box';
+
+  // D. Imprimir
   window.print();
 };
 
