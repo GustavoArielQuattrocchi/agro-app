@@ -520,102 +520,77 @@ $('#btnListado').onclick = () => { $('#modalListado').classList.add('open'); ren
 $('#btnCerrarListado').onclick = () => $('#modalListado').classList.remove('open');
 $('#q').addEventListener('input', renderListado);
 
-// 6. PDF (Diseño Final Limpio - Bodega Salentein)
+// 6. PDF (Corrección Final: Título Único y Simetría Perfecta)
 $('#btnPDF').onclick = () => {
   const d = getFormData();
   
   if(!d.finca) return alert('Seleccioná una finca para imprimir.');
 
-  // A. Inyectar Cabecera
+  // 1. OCULTAR EL TÍTULO VIEJO DEL HTML 
+  const tituloViejo = $('#printTitle');
+  if(tituloViejo) tituloViejo.style.display = 'none';
+
+  // 2. INYECTAR EL NUEVO DISEÑO
   $('#metaBox').innerHTML = `
     <style>
-      /* Título Principal (Afuera de la grilla) */
+      /* Título Principal Único */
       .salentein-title {
           text-align: center;
-          font-size: 22px;
+          font-size: 24px;
           font-weight: bold;
           text-transform: uppercase;
           text-decoration: underline;
-          margin-bottom: 30px;
+          margin-bottom: 35px; /* Más espacio antes de los datos */
           font-family: Arial, sans-serif;
+          color: #000;
       }
       
-      /* Grilla de 2 columnas */
+      /* Grilla Simétrica (Mitad y Mitad) */
       .foa-grid { 
           display: grid; 
-          grid-template-columns: 1fr 1fr; /* Mitad y mitad */
-          gap: 60px; /* Separación amplia en el centro */
+          grid-template-columns: 1fr 1fr; 
+          gap: 60px; /* Separación central amplia */
           font-family: Arial, sans-serif;
           font-size: 13px;
           margin-bottom: 20px;
       }
 
-      /* Cada fila de datos */
+      /* Renglones de datos */
       .data-row { 
           display: flex; 
-          justify-content: space-between; /* Etiqueta a la izq, Valor a la der */
-          border-bottom: 1px solid #999; /* Línea de renglón */
+          justify-content: space-between; 
+          border-bottom: 1px solid #999; 
           padding-bottom: 4px;
-          margin-bottom: 12px; /* Espacio vertical entre renglones */
+          margin-bottom: 12px; 
           align-items: flex-end;
       }
 
       .lbl { font-weight: 900; text-transform: uppercase; color: #000; font-size: 11px; }
-      .val { font-weight: 600; color: #222; text-align: right; font-size: 14px; }
+      .val { font-weight: 600; color: #111; text-align: right; font-size: 14px; }
     </style>
 
     <div class="salentein-title">ORDEN DE CURA - BODEGA SALENTEIN</div>
 
     <div class="foa-grid">
         <div>
-            <div class="data-row">
-                <span class="lbl">OC:</span> 
-                <span class="val">${displayOC(d.finca, d.oc)}</span>
-            </div>
-            <div class="data-row">
-                <span class="lbl">FINCA:</span> 
-                <span class="val">${d.finca}</span>
-            </div>
-            <div class="data-row">
-                <span class="lbl">CUARTEL:</span> 
-                <span class="val">${d.cuartel || '-'}</span>
-            </div>
-            <div class="data-row">
-                <span class="lbl">TRACTOR:</span> 
-                <span class="val">${d.tractor || '-'}</span>
-            </div>
-            <div class="data-row">
-                <span class="lbl" style="background:#eee; padding:0 3px;">IMPLEMENTO:</span> 
-                <span class="val">${d.maquinaria || '-'}</span>
-            </div>
+            <div class="data-row"><span class="lbl">OC:</span> <span class="val">${displayOC(d.finca, d.oc)}</span></div>
+            <div class="data-row"><span class="lbl">FINCA:</span> <span class="val">${d.finca}</span></div>
+            <div class="data-row"><span class="lbl">CUARTEL:</span> <span class="val">${d.cuartel || '-'}</span></div>
+            <div class="data-row"><span class="lbl">TRACTOR:</span> <span class="val">${d.tractor || '-'}</span></div>
+            <div class="data-row"><span class="lbl" style="background:#eee; padding:0 3px;">IMPLEMENTO:</span> <span class="val">${d.maquinaria || '-'}</span></div>
         </div>
 
         <div>
-            <div class="data-row">
-                <span class="lbl">FECHA:</span> 
-                <span class="val">${d.fecha.split('-').reverse().join('/')}</span>
-            </div>
-            <div class="data-row">
-                <span class="lbl">RESPONSABLE:</span> 
-                <span class="val">${d.tractorista || '-'}</span>
-            </div>
-             <div class="data-row">
-                <span class="lbl">VOL. MAQ:</span> 
-                <span class="val">${d.volumenMaquinaria ? d.volumenMaquinaria + ' L' : '-'}</span>
-            </div>
-            <div class="data-row">
-                <span class="lbl">VOL. APLICACIÓN:</span> 
-                <span class="val">${d.volumenAplicacion ? d.volumenAplicacion + ' L/ha' : '-'}</span>
-            </div>
-             <div class="data-row">
-                <span class="lbl">CULTIVO:</span> 
-                <span class="val">${d.cultivo || '-'}</span>
-            </div>
+            <div class="data-row"><span class="lbl">FECHA:</span> <span class="val">${d.fecha.split('-').reverse().join('/')}</span></div>
+            <div class="data-row"><span class="lbl">RESPONSABLE:</span> <span class="val">${d.tractorista || '-'}</span></div>
+            <div class="data-row"><span class="lbl">VOL. MAQ:</span> <span class="val">${d.volumenMaquinaria ? d.volumenMaquinaria + ' L' : '-'}</span></div>
+            <div class="data-row"><span class="lbl">VOL. APLICACIÓN:</span> <span class="val">${d.volumenAplicacion ? d.volumenAplicacion + ' L/ha' : '-'}</span></div>
+            <div class="data-row"><span class="lbl">CULTIVO:</span> <span class="val">${d.cultivo || '-'}</span></div>
         </div>
     </div>
   `;
 
-  // B. Inyectar Tabla
+  // 3. TABLA DE PRODUCTOS
   const tbody = $('#printTable tbody'); 
   tbody.innerHTML = '';
   
@@ -630,14 +605,15 @@ $('#btnPDF').onclick = () => {
       </tr>`;
   });
 
-  // C. Inyectar Indicaciones
+  // 4. INDICACIONES
   const indicacionesDiv = $('#printIndicaciones');
   indicacionesDiv.innerHTML = d.indicaciones ? d.indicaciones : 'Sin indicaciones adicionales.';
 
-  // D. Imprimir
   window.print();
+  
+  // (Opcional) Restaurar título viejo después de imprimir por si acaso
+  // if(tituloViejo) setTimeout(() => tituloViejo.style.display = 'block', 1000);
 };
-
 // 7. EXCEL
 $('#btnExcel').onclick = () => exportToCSV();
 
@@ -708,6 +684,7 @@ $('#btnLogout').onclick = async () => {
       $('#btnLogout').style.display='inline-block'; 
   }
 })();
+
 
 
 
