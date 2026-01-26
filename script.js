@@ -520,58 +520,111 @@ $('#btnListado').onclick = () => { $('#modalListado').classList.add('open'); ren
 $('#btnCerrarListado').onclick = () => $('#modalListado').classList.remove('open');
 $('#q').addEventListener('input', renderListado);
 
-// 6. PDF (Diseño Profesional Grilla)
+// 6. PDF (Diseño Planilla Técnica - Aprovechamiento Máximo)
 $('#btnPDF').onclick = () => {
   const d = getFormData();
   
   if(!d.finca) return alert('Seleccioná una finca para imprimir.');
 
-  // A. Inyectar Cabecera (Diseño Grilla con CSS incrustado)
+  // A. Inyectar Cabecera (Estilo Planilla con Bordes)
   $('#metaBox').innerHTML = `
     <style>
-      .print-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 14px; margin-bottom: 15px; }
-      .print-full { grid-column: span 2; background-color: #f1f5f9; border: 1px solid #cbd5e1; padding: 6px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center;}
-      .print-item { border-bottom: 1px solid #eee; padding-bottom: 2px; }
-      .label { font-weight: bold; color: #334155; }
+      /* Estilos exclusivos para impresión compacta */
+      .header-row { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 10px; border-bottom: 2px solid #333; padding-bottom: 5px; }
+      .header-title { font-size: 18px; font-weight: bold; text-transform: uppercase; }
+      .header-data { text-align: right; font-size: 14px; }
+      
+      .box-container { 
+          display: grid; 
+          grid-template-columns: repeat(4, 1fr); /* 4 Columnas */
+          border: 1px solid #333; 
+          font-size: 12px;
+      }
+      .box-item { 
+          padding: 4px 6px; 
+          border-right: 1px solid #333; 
+          border-bottom: 1px solid #333;
+          display: flex;
+          flex-direction: column;
+      }
+      /* Quitar bordes sobrantes */
+      .box-item:nth-child(4n) { border-right: none; } 
+      .box-item:nth-last-child(-n+4) { border-bottom: none; }
+      
+      .box-label { font-size: 9px; color: #555; text-transform: uppercase; font-weight: bold; margin-bottom: 2px; }
+      .box-value { font-size: 13px; font-weight: 600; color: #000; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      
+      .span-2 { grid-column: span 2; }
+      .span-4 { grid-column: span 4; background-color: #f0f0f0; }
     </style>
 
-    <div class="print-grid">
-        <div class="print-item"><span class="label">N° OC:</span> ${displayOC(d.finca, d.oc)}</div>
-        <div class="print-item"><span class="label">Fecha:</span> ${d.fecha.split('-').reverse().join('/')}</div>
+    <div class="header-row">
+        <div class="header-title">Orden de Aplicación</div>
+        <div class="header-data">
+            <div><strong>N° OC:</strong> ${displayOC(d.finca, d.oc)}</div>
+            <div><strong>Fecha:</strong> ${d.fecha.split('-').reverse().join('/')}</div>
+        </div>
+    </div>
 
-        <div class="print-item"><span class="label">Finca:</span> ${d.finca}</div>
-        <div class="print-item"><span class="label">Cuartel/Lote:</span> ${d.cuartel || '-'}</div>
-
-        <div class="print-item"><span class="label">Cultivo:</span> ${d.cultivo || '-'}</div>
-        <div class="print-item"><span class="label">Manejo:</span> ${d.manejo || '-'}</div>
-
-        <div class="print-full">
-            <div><span class="label">🚜 Maquinaria:</span> ${d.tractor || d.maquinaria || 'No especificada'}</div>
-            <div><span class="label">👤</span> ${d.tractorista || '-'}</div>
+    <div class="box-container">
+        <div class="box-item span-2">
+            <span class="box-label">Finca</span>
+            <span class="box-value">${d.finca}</span>
+        </div>
+        <div class="box-item">
+            <span class="box-label">Cuartel / Lote</span>
+            <span class="box-value">${d.cuartel || '-'}</span>
+        </div>
+        <div class="box-item">
+            <span class="box-label">Cultivo / Variedad</span>
+            <span class="box-value">${d.cultivo || '-'}</span>
         </div>
 
-        <div class="print-item"><span class="label">💧 Vol. Tanque:</span> ${d.volumenMaquinaria ? d.volumenMaquinaria + ' L' : '-'}</div>
-        <div class="print-item"><span class="label">🚿 Gasto (L/ha):</span> ${d.volumenAplicacion ? d.volumenAplicacion + ' L/Ha' : '-'}</div>
-        
-        <div class="print-item" style="grid-column: span 2;">
-            <span class="label">📋 Responsable Técnico:</span> ${d.tecnico || '-'}
+        <div class="box-item">
+            <span class="box-label">Tractor</span>
+            <span class="box-value">${d.tractor || '-'}</span>
+        </div>
+        <div class="box-item">
+            <span class="box-label">Implemento (Maquinaria)</span>
+            <span class="box-value">${d.maquinaria || '-'}</span>
+        </div>
+        <div class="box-item span-2">
+            <span class="box-label">👤 Tractorista / Aplicador</span>
+            <span class="box-value">${d.tractorista || '-'}</span>
+        </div>
+
+        <div class="box-item">
+            <span class="box-label">Cap. Tanque</span>
+            <span class="box-value">${d.volumenMaquinaria ? d.volumenMaquinaria + ' L' : '-'}</span>
+        </div>
+        <div class="box-item">
+            <span class="box-label">Gasto (L/ha)</span>
+            <span class="box-value">${d.volumenAplicacion ? d.volumenAplicacion + ' L/Ha' : '-'}</span>
+        </div>
+        <div class="box-item">
+             <span class="box-label">Manejo</span>
+             <span class="box-value">${d.manejo || '-'}</span>
+        </div>
+        <div class="box-item">
+            <span class="box-label">Responsable</span>
+            <span class="box-value">${d.tecnico || '-'}</span>
         </div>
     </div>
   `;
 
-  // B. Inyectar Tabla
+  // B. Inyectar Tabla (Más compacta también)
   const tbody = $('#printTable tbody'); 
   tbody.innerHTML = '';
   
   d.items.forEach(it => {
     tbody.innerHTML += `
-      <tr>
-        <td style="padding:4px">${it.producto}</td>
-        <td style="padding:4px">${it.ingredienteActivo || '-'}</td>
-        <td style="text-align:center">${it.presentacion || '-'}</td>
-        <td style="text-align:center">${it.dosisHa || '-'}</td>
-        <td style="text-align:center; font-weight:bold; background:#f8fafc">${it.dosisMaquinada || '-'}</td>
-        <td style="font-size:0.9em; font-style:italic">${it.obs || ''}</td>
+      <tr style="border-bottom: 1px solid #ddd;">
+        <td style="padding:4px 6px;">${it.producto}</td>
+        <td style="padding:4px 6px;">${it.ingredienteActivo || '-'}</td>
+        <td style="text-align:center; padding:4px;">${it.presentacion || '-'}</td>
+        <td style="text-align:center; padding:4px;">${it.dosisHa || '-'}</td>
+        <td style="text-align:center; font-weight:bold; background:#f4f4f4; padding:4px;">${it.dosisMaquinada || '-'}</td>
+        <td style="font-size:0.85em; font-style:italic; padding:4px;">${it.obs || ''}</td>
       </tr>`;
   });
 
@@ -653,6 +706,7 @@ $('#btnLogout').onclick = async () => {
       $('#btnLogout').style.display='inline-block'; 
   }
 })();
+
 
 
 
