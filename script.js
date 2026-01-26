@@ -519,14 +519,13 @@ $('#manejo').onchange = (e) => { if(e.target.value === 'Orgánico') document.bod
 $('#btnListado').onclick = () => { $('#modalListado').classList.add('open'); renderListado(); };
 $('#btnCerrarListado').onclick = () => $('#modalListado').classList.remove('open');
 $('#q').addEventListener('input', renderListado);
-
-// 6. PDF (Solución Final: Layout con Tablas + CSS de Impresión Forzado)
+// 6. PDF (Ancho Total + Sin Títulos Duplicados)
 $('#btnPDF').onclick = () => {
   const d = getFormData();
   
   if(!d.finca) return alert('Seleccioná una finca para imprimir.');
 
-  // A. CONTROL DEL TÍTULO HTML
+  // A. CONTROL DEL TÍTULO SUPERIOR
   const htmlTitle = $('#printTitle');
   if(htmlTitle) {
       htmlTitle.textContent = "ORDEN DE CURA - BODEGA SALENTEIN";
@@ -538,7 +537,7 @@ $('#btnPDF').onclick = () => {
       htmlTitle.style.marginBottom = '15px';
   }
 
-  // B. INYECTAR DATOS USANDO TABLA DE MAQUETACIÓN (INFALIBLE PARA PRINT)
+  // B. LAYOUT CON TABLAS (Para el ancho completo de hoja)
   $('#metaBox').innerHTML = `
     <style>
       /* --- CSS DE IMPRESIÓN FORZADO --- */
@@ -551,11 +550,10 @@ $('#btnPDF').onclick = () => {
               padding: 0 !important; 
               box-shadow: none !important;
           }
-          /* Ocultar elementos de navegación si se colaran */
           header, .btns, .modal { display: none !important; }
       }
 
-      /* Estilos de la Tabla de Layout (Cabecera) */
+      /* Tabla de Maquetación (Invisible) */
       .layout-table {
           width: 100%;
           border-collapse: collapse;
@@ -567,11 +565,11 @@ $('#btnPDF').onclick = () => {
           padding: 0;
           border: none; 
       }
-      /* Columna Izquierda y Derecha al 50% exacto */
-      .layout-col-left { width: 48%; padding-right: 2%; }
-      .layout-col-right { width: 48%; padding-left: 2%; }
+      /* Distribución 50% - 50% */
+      .layout-col-left { width: 49%; padding-right: 1%; }
+      .layout-col-right { width: 49%; padding-left: 1%; }
 
-      /* Estilo de los Renglones de Datos */
+      /* Estilo Renglón de Datos */
       .data-row {
           display: flex;
           align-items: flex-end;
@@ -583,7 +581,7 @@ $('#btnPDF').onclick = () => {
           font-weight: 900;
           font-size: 11px;
           text-transform: uppercase;
-          min-width: 110px; /* Ancho fijo para etiquetas */
+          min-width: 110px; /* Ancho fijo etiqueta */
       }
       .val {
           font-weight: 600;
@@ -597,7 +595,6 @@ $('#btnPDF').onclick = () => {
       #printTable th { border-top: 2px solid #000; border-bottom: 2px solid #000; text-align: left; padding: 5px; font-size: 11px; text-transform: uppercase; }
       #printTable td { border-bottom: 1px solid #ccc; padding: 6px 5px; font-size: 12px; }
       
-      /* Anchos de columna productos */
       .c1 { width: 30%; } .c2 { width: 20%; } .c3 { width: 10%; } .c4 { width: 25%; } .c5 { width: 15%; text-align: right; }
     </style>
 
@@ -649,24 +646,18 @@ $('#btnPDF').onclick = () => {
       </tr>`;
   });
 
-  // D. INDICACIONES (Corrección definitiva del duplicado)
+  // D. INDICACIONES (SOLO TEXTO)
   const indicacionesDiv = $('#printIndicaciones');
   
-  // 1. Ocultar cualquier etiqueta <label> hermana que pudiera existir
-  const posibleLabel = indicacionesDiv.previousElementSibling;
-  if(posibleLabel && posibleLabel.tagName === 'LABEL') {
-      posibleLabel.style.display = 'none';
-  }
+  // Limpiamos estilos inline del JS para que use los del CSS/HTML
+  indicacionesDiv.removeAttribute('style'); 
 
-  // 2. Limpiar y reescribir contenido
-  indicacionesDiv.innerHTML = ''; 
-  indicacionesDiv.style.marginTop = "20px";
-  indicacionesDiv.style.borderTop = "2px solid #000";
-  indicacionesDiv.style.paddingTop = "5px";
-  indicacionesDiv.innerHTML = `<strong>Indicaciones:</strong><br>${d.indicaciones ? d.indicaciones : 'Sin indicaciones adicionales.'}`;
+  // SOLO inyectamos el texto puro. El título ya está en el HTML.
+  indicacionesDiv.innerText = d.indicaciones ? d.indicaciones : 'Sin indicaciones adicionales.';
 
   window.print();
 };
+
 // 7. EXCEL
 $('#btnExcel').onclick = () => exportToCSV();
 
@@ -737,6 +728,7 @@ $('#btnLogout').onclick = async () => {
       $('#btnLogout').style.display='inline-block'; 
   }
 })();
+
 
 
 
