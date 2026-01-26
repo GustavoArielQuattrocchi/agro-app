@@ -520,139 +520,158 @@ $('#btnListado').onclick = () => { $('#modalListado').classList.add('open'); ren
 $('#btnCerrarListado').onclick = () => $('#modalListado').classList.remove('open');
 $('#q').addEventListener('input', renderListado);
 
-// 6. PDF (Diseño Simétrico y Alineado - Bodega Salentein)
+// 6. PDF (Replica Exacta FOA-00008 + Implemento + Ancho Total)
 $('#btnPDF').onclick = () => {
   const d = getFormData();
   
   if(!d.finca) return alert('Seleccioná una finca para imprimir.');
 
-  // A. CONTROL DEL TÍTULO HTML
+  // A. ACTUALIZAR TÍTULO HTML (Para que coincida con el PDF)
   const htmlTitle = $('#printTitle');
   if(htmlTitle) {
       htmlTitle.style.display = 'block';
       htmlTitle.textContent = "ORDEN DE CURA - BODEGA SALENTEIN";
       htmlTitle.style.textAlign = 'center';
-      htmlTitle.style.textDecoration = 'underline';
+      htmlTitle.style.textDecoration = 'none'; // El PDF no tiene subrayado en el título
+      htmlTitle.style.fontWeight = 'bold';
+      htmlTitle.style.fontSize = '24px';
       htmlTitle.style.marginBottom = '20px';
+      htmlTitle.style.marginTop = '0px';
   }
 
-  // B. INYECTAR GRILLA ORDENADA
+  // B. INYECTAR LA ESTRUCTURA DE DATOS
   $('#metaBox').innerHTML = `
     <style>
-      /* Grilla Principal: 2 Columnas */
+      /* --- GRILLA DE DATOS (Estilo Renglón) --- */
       .foa-grid { 
           display: grid; 
-          grid-template-columns: 1fr 1fr; /* Mitad y Mitad */
-          gap: 40px; /* Espacio central */
-          font-family: Arial, sans-serif;
-          font-size: 13px;
-          margin-bottom: 20px;
-          margin-top: 10px;
+          grid-template-columns: 1fr 1fr; /* 2 Columnas exactas */
+          gap: 40px; 
+          font-family: Arial, Helvetica, sans-serif;
+          font-size: 14px;
+          margin-bottom: 25px;
       }
 
-      /* Estilo del Renglón */
       .data-row { 
           display: flex; 
-          align-items: flex-end; /* Alinear al fondo */
-          border-bottom: 1px solid #ccc; /* Línea suave */
-          padding-bottom: 4px;
-          margin-bottom: 10px; 
+          justify-content: flex-start; /* Alineados a la izquierda */
+          align-items: flex-end; 
+          border-bottom: 1px solid #000; /* Línea negra sólida como en el PDF */
+          padding-bottom: 2px;
+          margin-bottom: 8px; 
       }
 
-      /* COLUMNA 1: La Etiqueta (Título del ítem) */
+      /* ETIQUETAS FIJAS (Para que no se muevan) */
       .lbl { 
           font-weight: 900; 
           text-transform: uppercase; 
           color: #000; 
-          font-size: 11px;
-          
-          /* TRUCO: Ancho fijo para que no se desplacen */
-          width: 110px; 
-          min-width: 110px;
-          display: inline-block;
+          font-size: 12px;
+          min-width: 130px; /* Ancho fijo reservado para el título */
       }
 
-      /* COLUMNA 2: El Dato */
+      /* VALORES */
       .val { 
           font-weight: 600; 
-          color: #111; 
+          color: #000; 
           font-size: 14px;
-          text-align: left; /* Alineado a la izq para estar cerca del título */
-          padding-left: 10px;
+          text-align: left;
           width: 100%;
       }
+
+      /* --- TABLA FULL WIDTH (Estilo PDF) --- */
+      #printTable {
+          width: 100% !important; 
+          border-collapse: collapse;
+          font-family: Arial, Helvetica, sans-serif;
+          margin-top: 10px;
+      }
+      
+      /* Cabecera de Tabla */
+      #printTable thead th {
+          text-align: left;
+          padding: 8px 5px;
+          border-top: 2px solid #000;
+          border-bottom: 2px solid #000;
+          font-weight: 900;
+          text-transform: uppercase;
+          font-size: 12px;
+      }
+
+      /* Celdas */
+      #printTable tbody td {
+          padding: 8px 5px;
+          border-bottom: 1px solid #ccc;
+          font-size: 13px;
+          vertical-align: top;
+      }
+
+      /* ANCHOS DE COLUMNA (Ajustados al PDF) */
+      .col-prod { width: 30%; }
+      .col-ia   { width: 20%; }
+      .col-pres { width: 10%; }
+      .col-obs  { width: 25%; } /* Obs antes de Dosis */
+      .col-dosis{ width: 15%; text-align: right; }
+      
     </style>
 
     <div class="foa-grid">
         <div>
-            <div class="data-row">
-                <span class="lbl">OC:</span> 
-                <span class="val">${displayOC(d.finca, d.oc)}</span>
-            </div>
-            <div class="data-row">
-                <span class="lbl">FINCA:</span> 
-                <span class="val">${d.finca}</span>
-            </div>
-            <div class="data-row">
-                <span class="lbl">CUARTEL:</span> 
-                <span class="val">${d.cuartel || '-'}</span>
-            </div>
-            <div class="data-row">
-                <span class="lbl">TRACTOR:</span> 
-                <span class="val">${d.tractor || '-'}</span>
-            </div>
-            <div class="data-row">
-                <span class="lbl" style="background:#eee;">IMPLEMENTO:</span> 
-                <span class="val">${d.maquinaria || '-'}</span>
-            </div>
+            <div class="data-row"><span class="lbl">OC:</span> <span class="val">${displayOC(d.finca, d.oc)}</span></div>
+            <div class="data-row"><span class="lbl">FINCA:</span> <span class="val">${d.finca}</span></div>
+            <div class="data-row"><span class="lbl">CUARTEL:</span> <span class="val">${d.cuartel || 'Todos'}</span></div>
+            <div class="data-row"><span class="lbl">TRACTOR:</span> <span class="val">${d.tractor || '-'}</span></div>
+            <div class="data-row"><span class="lbl">IMPLEMENTO:</span> <span class="val">${d.maquinaria || '-'}</span></div>
         </div>
 
         <div>
-            <div class="data-row">
-                <span class="lbl">FECHA:</span> 
-                <span class="val">${d.fecha.split('-').reverse().join('/')}</span>
-            </div>
-            <div class="data-row">
-                <span class="lbl">RESPONSABLE:</span> 
-                <span class="val">${d.tractorista || '-'}</span>
-            </div>
-             <div class="data-row">
-                <span class="lbl">VOL. MAQ:</span> 
-                <span class="val">${d.volumenMaquinaria ? d.volumenMaquinaria + ' L' : '-'}</span>
-            </div>
-            <div class="data-row">
-                <span class="lbl">VOL. APLICACIÓN:</span> 
-                <span class="val">${d.volumenAplicacion ? d.volumenAplicacion + ' L/ha' : '-'}</span>
-            </div>
-             <div class="data-row">
-                <span class="lbl">CULTIVO:</span> 
-                <span class="val">${d.cultivo || '-'}</span>
-            </div>
+            <div class="data-row"><span class="lbl">FECHA:</span> <span class="val">${d.fecha.split('-').reverse().join('/')}</span></div>
+            <div class="data-row"><span class="lbl">RESPONSABLE:</span> <span class="val">${d.tractorista || '-'}</span></div>
+            <div class="data-row"><span class="lbl">VOL. MAQ:</span> <span class="val">${d.volumenMaquinaria ? d.volumenMaquinaria + ' L' : '-'}</span></div>
+            <div class="data-row"><span class="lbl">VOL. APLICACIÓN:</span> <span class="val">${d.volumenAplicacion ? d.volumenAplicacion + ' L/ha' : '-'}</span></div>
+            <div class="data-row"><span class="lbl">CULTIVO:</span> <span class="val">${d.cultivo || '-'}</span></div>
         </div>
     </div>
   `;
 
-  // C. TABLA DE PRODUCTOS
-  const tbody = $('#printTable tbody'); 
-  tbody.innerHTML = '';
+  // C. RECONSTRUIR TABLA COMPLETA (Cabecera + Cuerpo para asegurar anchos)
+  const tabla = $('#printTable');
+  tabla.innerHTML = `
+      <thead>
+          <tr>
+              <th class="col-prod">PRODUCTO</th>
+              <th class="col-ia">ING. ACTIVO</th>
+              <th class="col-pres">PRES.</th>
+              <th class="col-obs">OBS.</th>
+              <th class="col-dosis">DOSIS/MAQ</th>
+          </tr>
+      </thead>
+      <tbody></tbody>
+  `;
+  
+  const tbody = tabla.querySelector('tbody');
   
   d.items.forEach(it => {
     tbody.innerHTML += `
-      <tr style="border-bottom:1px solid #ccc;">
-        <td style="padding:8px; font-weight:bold;">${it.producto}</td>
-        <td style="padding:8px;">${it.ingredienteActivo || '-'}</td>
-        <td style="text-align:center; padding:8px;">${it.presentacion || '-'}</td>
-        <td style="font-size:0.9em; font-style:italic; padding:8px;">${it.obs || ''}</td>
-        <td style="text-align:center; font-weight:bold; background:#f0f0f0; border-left:2px solid #000; font-size:1.1em;">${it.dosisMaquinada || '-'}</td>
+      <tr>
+        <td><strong>${it.producto}</strong></td>
+        <td>${it.ingredienteActivo || '-'}</td>
+        <td>${it.presentacion || '-'}</td>
+        <td style="font-style:italic;">${it.obs || ''}</td>
+        <td style="text-align:right; font-weight:bold;">${it.dosisMaquinada || '-'}</td>
       </tr>`;
   });
 
-  // D. INDICACIONES
+  // D. INDICACIONES (Estilo PDF: Texto simple abajo)
   const indicacionesDiv = $('#printIndicaciones');
-  indicacionesDiv.innerHTML = d.indicaciones ? d.indicaciones : 'Sin indicaciones adicionales.';
+  indicacionesDiv.style.marginTop = "20px";
+  indicacionesDiv.style.borderTop = "2px solid #000";
+  indicacionesDiv.style.paddingTop = "5px";
+  indicacionesDiv.innerHTML = `<strong>Indicaciones:</strong><br>${d.indicaciones ? d.indicaciones : 'Sin indicaciones adicionales.'}`;
 
   window.print();
 };
+
 // 7. EXCEL
 $('#btnExcel').onclick = () => exportToCSV();
 
