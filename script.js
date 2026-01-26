@@ -520,65 +520,114 @@ $('#btnListado').onclick = () => { $('#modalListado').classList.add('open'); ren
 $('#btnCerrarListado').onclick = () => $('#modalListado').classList.remove('open');
 $('#q').addEventListener('input', renderListado);
 
-// 6. PDF (Título en HTML, Datos en JS)
+// 6. PDF (Diseño Simétrico y Alineado - Bodega Salentein)
 $('#btnPDF').onclick = () => {
   const d = getFormData();
   
   if(!d.finca) return alert('Seleccioná una finca para imprimir.');
 
-  // A. ACTUALIZAR EL TÍTULO DEL HTML (Para asegurar que diga lo correcto)
+  // A. CONTROL DEL TÍTULO HTML
   const htmlTitle = $('#printTitle');
   if(htmlTitle) {
-      htmlTitle.style.display = 'block'; // Aseguramos que se vea
-      htmlTitle.textContent = "ORDEN DE CURA - BODEGA SALENTEIN"; // Texto correcto
+      htmlTitle.style.display = 'block';
+      htmlTitle.textContent = "ORDEN DE CURA - BODEGA SALENTEIN";
       htmlTitle.style.textAlign = 'center';
       htmlTitle.style.textDecoration = 'underline';
       htmlTitle.style.marginBottom = '20px';
   }
 
-  // B. INYECTAR SOLO LA GRILLA DE DATOS (Sin título adentro)
+  // B. INYECTAR GRILLA ORDENADA
   $('#metaBox').innerHTML = `
     <style>
-      /* Grilla Simétrica (Mitad y Mitad) */
+      /* Grilla Principal: 2 Columnas */
       .foa-grid { 
           display: grid; 
-          grid-template-columns: 1fr 1fr; 
-          gap: 60px; 
+          grid-template-columns: 1fr 1fr; /* Mitad y Mitad */
+          gap: 40px; /* Espacio central */
           font-family: Arial, sans-serif;
           font-size: 13px;
           margin-bottom: 20px;
           margin-top: 10px;
       }
 
-      /* Renglones de datos */
+      /* Estilo del Renglón */
       .data-row { 
           display: flex; 
-          justify-content: space-between; 
-          border-bottom: 1px solid #999; 
+          align-items: flex-end; /* Alinear al fondo */
+          border-bottom: 1px solid #ccc; /* Línea suave */
           padding-bottom: 4px;
-          margin-bottom: 12px; 
-          align-items: flex-end;
+          margin-bottom: 10px; 
       }
 
-      .lbl { font-weight: 900; text-transform: uppercase; color: #000; font-size: 11px; }
-      .val { font-weight: 600; color: #111; text-align: right; font-size: 14px; }
+      /* COLUMNA 1: La Etiqueta (Título del ítem) */
+      .lbl { 
+          font-weight: 900; 
+          text-transform: uppercase; 
+          color: #000; 
+          font-size: 11px;
+          
+          /* TRUCO: Ancho fijo para que no se desplacen */
+          width: 110px; 
+          min-width: 110px;
+          display: inline-block;
+      }
+
+      /* COLUMNA 2: El Dato */
+      .val { 
+          font-weight: 600; 
+          color: #111; 
+          font-size: 14px;
+          text-align: left; /* Alineado a la izq para estar cerca del título */
+          padding-left: 10px;
+          width: 100%;
+      }
     </style>
 
     <div class="foa-grid">
         <div>
-            <div class="data-row"><span class="lbl">OC:</span> <span class="val">${displayOC(d.finca, d.oc)}</span></div>
-            <div class="data-row"><span class="lbl">FINCA:</span> <span class="val">${d.finca}</span></div>
-            <div class="data-row"><span class="lbl">CUARTEL:</span> <span class="val">${d.cuartel || '-'}</span></div>
-            <div class="data-row"><span class="lbl">TRACTOR:</span> <span class="val">${d.tractor || '-'}</span></div>
-            <div class="data-row"><span class="lbl" style="background:#eee; padding:0 3px;">IMPLEMENTO:</span> <span class="val">${d.maquinaria || '-'}</span></div>
+            <div class="data-row">
+                <span class="lbl">OC:</span> 
+                <span class="val">${displayOC(d.finca, d.oc)}</span>
+            </div>
+            <div class="data-row">
+                <span class="lbl">FINCA:</span> 
+                <span class="val">${d.finca}</span>
+            </div>
+            <div class="data-row">
+                <span class="lbl">CUARTEL:</span> 
+                <span class="val">${d.cuartel || '-'}</span>
+            </div>
+            <div class="data-row">
+                <span class="lbl">TRACTOR:</span> 
+                <span class="val">${d.tractor || '-'}</span>
+            </div>
+            <div class="data-row">
+                <span class="lbl" style="background:#eee;">IMPLEMENTO:</span> 
+                <span class="val">${d.maquinaria || '-'}</span>
+            </div>
         </div>
 
         <div>
-            <div class="data-row"><span class="lbl">FECHA:</span> <span class="val">${d.fecha.split('-').reverse().join('/')}</span></div>
-            <div class="data-row"><span class="lbl">RESPONSABLE:</span> <span class="val">${d.tractorista || '-'}</span></div>
-            <div class="data-row"><span class="lbl">VOL. MAQ:</span> <span class="val">${d.volumenMaquinaria ? d.volumenMaquinaria + ' L' : '-'}</span></div>
-            <div class="data-row"><span class="lbl">VOL. APLICACIÓN:</span> <span class="val">${d.volumenAplicacion ? d.volumenAplicacion + ' L/ha' : '-'}</span></div>
-            <div class="data-row"><span class="lbl">CULTIVO:</span> <span class="val">${d.cultivo || '-'}</span></div>
+            <div class="data-row">
+                <span class="lbl">FECHA:</span> 
+                <span class="val">${d.fecha.split('-').reverse().join('/')}</span>
+            </div>
+            <div class="data-row">
+                <span class="lbl">RESPONSABLE:</span> 
+                <span class="val">${d.tractorista || '-'}</span>
+            </div>
+             <div class="data-row">
+                <span class="lbl">VOL. MAQ:</span> 
+                <span class="val">${d.volumenMaquinaria ? d.volumenMaquinaria + ' L' : '-'}</span>
+            </div>
+            <div class="data-row">
+                <span class="lbl">VOL. APLICACIÓN:</span> 
+                <span class="val">${d.volumenAplicacion ? d.volumenAplicacion + ' L/ha' : '-'}</span>
+            </div>
+             <div class="data-row">
+                <span class="lbl">CULTIVO:</span> 
+                <span class="val">${d.cultivo || '-'}</span>
+            </div>
         </div>
     </div>
   `;
@@ -674,18 +723,6 @@ $('#btnLogout').onclick = async () => {
       $('#btnLogout').style.display='inline-block'; 
   }
 })();
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
