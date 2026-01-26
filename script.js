@@ -520,111 +520,111 @@ $('#btnListado').onclick = () => { $('#modalListado').classList.add('open'); ren
 $('#btnCerrarListado').onclick = () => $('#modalListado').classList.remove('open');
 $('#q').addEventListener('input', renderListado);
 
-// 6. PDF (Diseño Planilla Técnica - Aprovechamiento Máximo)
+// 6. PDF (Estilo FOA - 2 Columnas con Implemento)
 $('#btnPDF').onclick = () => {
   const d = getFormData();
   
   if(!d.finca) return alert('Seleccioná una finca para imprimir.');
 
-  // A. Inyectar Cabecera (Estilo Planilla con Bordes)
+  // A. Inyectar Cabecera (Estilo limpio 2 columnas como el PDF)
   $('#metaBox').innerHTML = `
     <style>
-      /* Estilos exclusivos para impresión compacta */
-      .header-row { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 10px; border-bottom: 2px solid #333; padding-bottom: 5px; }
-      .header-title { font-size: 18px; font-weight: bold; text-transform: uppercase; }
-      .header-data { text-align: right; font-size: 14px; }
-      
-      .box-container { 
+      .foa-header { 
           display: grid; 
-          grid-template-columns: repeat(4, 1fr); /* 4 Columnas */
-          border: 1px solid #333; 
-          font-size: 12px;
+          grid-template-columns: 1fr 1fr; /* 2 Columnas exactas */
+          gap: 40px; /* Separación amplia como en el PDF */
+          font-family: Arial, Helvetica, sans-serif;
+          margin-bottom: 20px;
+          font-size: 14px;
       }
-      .box-item { 
-          padding: 4px 6px; 
-          border-right: 1px solid #333; 
-          border-bottom: 1px solid #333;
+      .data-line { 
+          margin-bottom: 8px; 
+          border-bottom: 1px solid #ccc; /* Línea sutil para guiar el ojo */
+          padding-bottom: 2px;
           display: flex;
-          flex-direction: column;
+          justify-content: space-between;
       }
-      /* Quitar bordes sobrantes */
-      .box-item:nth-child(4n) { border-right: none; } 
-      .box-item:nth-last-child(-n+4) { border-bottom: none; }
+      .label { 
+          font-weight: 900; 
+          text-transform: uppercase; 
+          color: #000;
+          margin-right: 10px;
+      }
+      .val { font-weight: 600; color: #333; }
       
-      .box-label { font-size: 9px; color: #555; text-transform: uppercase; font-weight: bold; margin-bottom: 2px; }
-      .box-value { font-size: 13px; font-weight: 600; color: #000; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-      
-      .span-2 { grid-column: span 2; }
-      .span-4 { grid-column: span 4; background-color: #f0f0f0; }
+      .main-title {
+          text-align: center;
+          font-size: 22px;
+          font-weight: bold;
+          text-transform: uppercase;
+          margin-bottom: 30px;
+          text-decoration: underline;
+      }
     </style>
 
-    <div class="header-row">
-        <div class="header-title">Orden de Aplicación</div>
-        <div class="header-data">
-            <div><strong>N° OC:</strong> ${displayOC(d.finca, d.oc)}</div>
-            <div><strong>Fecha:</strong> ${d.fecha.split('-').reverse().join('/')}</div>
-        </div>
-    </div>
+    <div class="main-title">ORDEN DE CURA - ${d.finca}</div>
 
-    <div class="box-container">
-        <div class="box-item span-2">
-            <span class="box-label">Finca</span>
-            <span class="box-value">${d.finca}</span>
-        </div>
-        <div class="box-item">
-            <span class="box-label">Cuartel / Lote</span>
-            <span class="box-value">${d.cuartel || '-'}</span>
-        </div>
-        <div class="box-item">
-            <span class="box-label">Cultivo / Variedad</span>
-            <span class="box-value">${d.cultivo || '-'}</span>
-        </div>
-
-        <div class="box-item">
-            <span class="box-label">Tractor</span>
-            <span class="box-value">${d.tractor || '-'}</span>
-        </div>
-        <div class="box-item">
-            <span class="box-label">Implemento (Maquinaria)</span>
-            <span class="box-value">${d.maquinaria || '-'}</span>
-        </div>
-        <div class="box-item span-2">
-            <span class="box-label">👤 Tractorista / Aplicador</span>
-            <span class="box-value">${d.tractorista || '-'}</span>
+    <div class="foa-header">
+        <div>
+            <div class="data-line">
+                <span class="label">OC:</span> 
+                <span class="val">${displayOC(d.finca, d.oc)}</span>
+            </div>
+            <div class="data-line">
+                <span class="label">FINCA:</span> 
+                <span class="val">${d.finca}</span>
+            </div>
+            <div class="data-line">
+                <span class="label">CUARTEL / LOTE:</span> 
+                <span class="val">${d.cuartel || '-'}</span>
+            </div>
+            <div class="data-line">
+                <span class="label">TRACTOR:</span> 
+                <span class="val">${d.tractor || '-'}</span>
+            </div>
+            <div class="data-line">
+                <span class="label" style="background:#eee;">IMPLEMENTO:</span> 
+                <span class="val">${d.maquinaria || '-'}</span>
+            </div>
         </div>
 
-        <div class="box-item">
-            <span class="box-label">Cap. Tanque</span>
-            <span class="box-value">${d.volumenMaquinaria ? d.volumenMaquinaria + ' L' : '-'}</span>
-        </div>
-        <div class="box-item">
-            <span class="box-label">Gasto (L/ha)</span>
-            <span class="box-value">${d.volumenAplicacion ? d.volumenAplicacion + ' L/Ha' : '-'}</span>
-        </div>
-        <div class="box-item">
-             <span class="box-label">Manejo</span>
-             <span class="box-value">${d.manejo || '-'}</span>
-        </div>
-        <div class="box-item">
-            <span class="box-label">Responsable</span>
-            <span class="box-value">${d.tecnico || '-'}</span>
+        <div>
+            <div class="data-line">
+                <span class="label">FECHA:</span> 
+                <span class="val">${d.fecha.split('-').reverse().join('/')}</span>
+            </div>
+            <div class="data-line">
+                <span class="label">RESPONSABLE:</span> 
+                <span class="val">${d.tractorista || '-'}</span>
+            </div>
+             <div class="data-line">
+                <span class="label">VOL. MAQ (Tanque):</span> 
+                <span class="val">${d.volumenMaquinaria ? d.volumenMaquinaria + ' L' : '-'}</span>
+            </div>
+            <div class="data-line">
+                <span class="label">VOL. APLICACIÓN:</span> 
+                <span class="val">${d.volumenAplicacion ? d.volumenAplicacion + ' L/ha' : '-'}</span>
+            </div>
+             <div class="data-line">
+                <span class="label">CULTIVO:</span> 
+                <span class="val">${d.cultivo || '-'}</span>
+            </div>
         </div>
     </div>
   `;
 
-  // B. Inyectar Tabla (Más compacta también)
+  // B. Inyectar Tabla (Estilo FOA: Producto, IA, Pres, Obs, DosisMaq)
   const tbody = $('#printTable tbody'); 
   tbody.innerHTML = '';
   
   d.items.forEach(it => {
     tbody.innerHTML += `
-      <tr style="border-bottom: 1px solid #ddd;">
-        <td style="padding:4px 6px;">${it.producto}</td>
-        <td style="padding:4px 6px;">${it.ingredienteActivo || '-'}</td>
-        <td style="text-align:center; padding:4px;">${it.presentacion || '-'}</td>
-        <td style="text-align:center; padding:4px;">${it.dosisHa || '-'}</td>
-        <td style="text-align:center; font-weight:bold; background:#f4f4f4; padding:4px;">${it.dosisMaquinada || '-'}</td>
-        <td style="font-size:0.85em; font-style:italic; padding:4px;">${it.obs || ''}</td>
+      <tr style="border-bottom:1px solid #ddd;">
+        <td style="padding:8px; font-weight:bold;">${it.producto}</td>
+        <td style="padding:8px;">${it.ingredienteActivo || '-'}</td>
+        <td style="text-align:center; padding:8px;">${it.presentacion || '-'}</td>
+        <td style="font-size:0.9em; font-style:italic; padding:8px;">${it.obs || ''}</td>
+        <td style="text-align:center; font-weight:bold; background:#f0f0f0; border-left:2px solid #000; font-size:1.1em;">${it.dosisMaquinada || '-'}</td>
       </tr>`;
   });
 
