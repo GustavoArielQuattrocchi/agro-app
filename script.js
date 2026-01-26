@@ -520,39 +520,34 @@ $('#btnListado').onclick = () => { $('#modalListado').classList.add('open'); ren
 $('#btnCerrarListado').onclick = () => $('#modalListado').classList.remove('open');
 $('#q').addEventListener('input', renderListado);
 
-// 6. PDF (Corrección Final: Título Único y Simetría Perfecta)
+// 6. PDF (Título en HTML, Datos en JS)
 $('#btnPDF').onclick = () => {
   const d = getFormData();
   
   if(!d.finca) return alert('Seleccioná una finca para imprimir.');
 
-  // 1. OCULTAR EL TÍTULO VIEJO DEL HTML 
-  const tituloViejo = $('#printTitle');
-  if(tituloViejo) tituloViejo.style.display = 'none';
+  // A. ACTUALIZAR EL TÍTULO DEL HTML (Para asegurar que diga lo correcto)
+  const htmlTitle = $('#printTitle');
+  if(htmlTitle) {
+      htmlTitle.style.display = 'block'; // Aseguramos que se vea
+      htmlTitle.textContent = "ORDEN DE CURA - BODEGA SALENTEIN"; // Texto correcto
+      htmlTitle.style.textAlign = 'center';
+      htmlTitle.style.textDecoration = 'underline';
+      htmlTitle.style.marginBottom = '20px';
+  }
 
-  // 2. INYECTAR EL NUEVO DISEÑO
+  // B. INYECTAR SOLO LA GRILLA DE DATOS (Sin título adentro)
   $('#metaBox').innerHTML = `
     <style>
-      /* Título Principal Único */
-      .salentein-title {
-          text-align: center;
-          font-size: 24px;
-          font-weight: bold;
-          text-transform: uppercase;
-          text-decoration: underline;
-          margin-bottom: 35px; /* Más espacio antes de los datos */
-          font-family: Arial, sans-serif;
-          color: #000;
-      }
-      
       /* Grilla Simétrica (Mitad y Mitad) */
       .foa-grid { 
           display: grid; 
           grid-template-columns: 1fr 1fr; 
-          gap: 60px; /* Separación central amplia */
+          gap: 60px; 
           font-family: Arial, sans-serif;
           font-size: 13px;
           margin-bottom: 20px;
+          margin-top: 10px;
       }
 
       /* Renglones de datos */
@@ -568,8 +563,6 @@ $('#btnPDF').onclick = () => {
       .lbl { font-weight: 900; text-transform: uppercase; color: #000; font-size: 11px; }
       .val { font-weight: 600; color: #111; text-align: right; font-size: 14px; }
     </style>
-
-    <div class="salentein-title">ORDEN DE CURA - BODEGA SALENTEIN</div>
 
     <div class="foa-grid">
         <div>
@@ -590,7 +583,7 @@ $('#btnPDF').onclick = () => {
     </div>
   `;
 
-  // 3. TABLA DE PRODUCTOS
+  // C. TABLA DE PRODUCTOS
   const tbody = $('#printTable tbody'); 
   tbody.innerHTML = '';
   
@@ -605,14 +598,11 @@ $('#btnPDF').onclick = () => {
       </tr>`;
   });
 
-  // 4. INDICACIONES
+  // D. INDICACIONES
   const indicacionesDiv = $('#printIndicaciones');
   indicacionesDiv.innerHTML = d.indicaciones ? d.indicaciones : 'Sin indicaciones adicionales.';
 
   window.print();
-  
-  // (Opcional) Restaurar título viejo después de imprimir por si acaso
-  // if(tituloViejo) setTimeout(() => tituloViejo.style.display = 'block', 1000);
 };
 // 7. EXCEL
 $('#btnExcel').onclick = () => exportToCSV();
@@ -684,6 +674,14 @@ $('#btnLogout').onclick = async () => {
       $('#btnLogout').style.display='inline-block'; 
   }
 })();
+
+
+
+
+
+
+
+
 
 
 
