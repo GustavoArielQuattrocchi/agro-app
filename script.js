@@ -520,110 +520,106 @@ $('#btnListado').onclick = () => { $('#modalListado').classList.add('open'); ren
 $('#btnCerrarListado').onclick = () => $('#modalListado').classList.remove('open');
 $('#q').addEventListener('input', renderListado);
 
-// 6. PDF (Estilo FOA - 2 Columnas con Implemento)
+// 6. PDF (Diseño Simétrico - Bodega Salentein)
 $('#btnPDF').onclick = () => {
   const d = getFormData();
   
   if(!d.finca) return alert('Seleccioná una finca para imprimir.');
 
-  // A. Inyectar Cabecera (Estilo limpio 2 columnas como el PDF)
+  // A. Inyectar Cabecera (Simetría 5x5)
   $('#metaBox').innerHTML = `
     <style>
-      .foa-header { 
-          display: grid; 
-          grid-template-columns: 1fr 1fr; /* 2 Columnas exactas */
-          gap: 40px; /* Separación amplia como en el PDF */
-          font-family: Arial, Helvetica, sans-serif;
-          margin-bottom: 20px;
-          font-size: 14px;
-      }
-      .data-line { 
-          margin-bottom: 8px; 
-          border-bottom: 1px solid #ccc; /* Línea sutil para guiar el ojo */
-          padding-bottom: 2px;
-          display: flex;
-          justify-content: space-between;
-      }
-      .label { 
-          font-weight: 900; 
-          text-transform: uppercase; 
-          color: #000;
-          margin-right: 10px;
-      }
-      .val { font-weight: 600; color: #333; }
-      
-      .main-title {
+      .salentein-title {
           text-align: center;
-          font-size: 22px;
+          font-size: 20px;
           font-weight: bold;
           text-transform: uppercase;
-          margin-bottom: 30px;
           text-decoration: underline;
+          margin-bottom: 25px;
+          font-family: Arial, sans-serif;
       }
+      .foa-grid { 
+          display: grid; 
+          grid-template-columns: 1fr 1fr; /* 2 Columnas idénticas */
+          gap: 50px; /* Buen espacio al medio */
+          font-family: Arial, sans-serif;
+          font-size: 13px;
+          margin-bottom: 20px;
+      }
+      .data-row { 
+          display: flex; 
+          justify-content: space-between; 
+          border-bottom: 1px solid #aaa; /* Línea divisoria fina */
+          padding-bottom: 3px;
+          margin-bottom: 8px;
+          align-items: flex-end;
+      }
+      .lbl { font-weight: 900; text-transform: uppercase; color: #000; }
+      .val { font-weight: 600; color: #333; text-align: right; }
     </style>
 
-    <div class="main-title">ORDEN DE CURA - ${d.finca}</div>
+    <div class="salentein-title">ORDEN DE CURA - BODEGA SALENTEIN</div>
 
-    <div class="foa-header">
+    <div class="foa-grid">
         <div>
-            <div class="data-line">
-                <span class="label">OC:</span> 
+            <div class="data-row">
+                <span class="lbl">OC:</span> 
                 <span class="val">${displayOC(d.finca, d.oc)}</span>
             </div>
-            <div class="data-line">
-                <span class="label">FINCA:</span> 
+            <div class="data-row">
+                <span class="lbl">FINCA:</span> 
                 <span class="val">${d.finca}</span>
             </div>
-            <div class="data-line">
-                <span class="label">CUARTEL / LOTE:</span> 
+            <div class="data-row">
+                <span class="lbl">CUARTEL:</span> 
                 <span class="val">${d.cuartel || '-'}</span>
             </div>
-            <div class="data-line">
-                <span class="label">TRACTOR:</span> 
+            <div class="data-row">
+                <span class="lbl">TRACTOR:</span> 
                 <span class="val">${d.tractor || '-'}</span>
             </div>
-            <div class="data-line">
-                <span class="label" style="background:#eee;">IMPLEMENTO:</span> 
+            <div class="data-row">
+                <span class="lbl">IMPLEMENTO:</span> 
                 <span class="val">${d.maquinaria || '-'}</span>
             </div>
         </div>
 
         <div>
-            <div class="data-line">
-                <span class="label">FECHA:</span> 
+            <div class="data-row">
+                <span class="lbl">FECHA:</span> 
                 <span class="val">${d.fecha.split('-').reverse().join('/')}</span>
             </div>
-            <div class="data-line">
-                <span class="label">RESPONSABLE:</span> 
+            <div class="data-row">
+                <span class="lbl">RESPONSABLE:</span> 
                 <span class="val">${d.tractorista || '-'}</span>
             </div>
-             <div class="data-line">
-                <span class="label">VOL. MAQ (Tanque):</span> 
+             <div class="data-row">
+                <span class="lbl">VOL. MAQ:</span> 
                 <span class="val">${d.volumenMaquinaria ? d.volumenMaquinaria + ' L' : '-'}</span>
             </div>
-            <div class="data-line">
-                <span class="label">VOL. APLICACIÓN:</span> 
+            <div class="data-row">
+                <span class="lbl">VOL. APLICACIÓN:</span> 
                 <span class="val">${d.volumenAplicacion ? d.volumenAplicacion + ' L/ha' : '-'}</span>
             </div>
-             <div class="data-line">
-                <span class="label">CULTIVO:</span> 
+             <div class="data-row">
+                <span class="lbl">CULTIVO:</span> 
                 <span class="val">${d.cultivo || '-'}</span>
             </div>
         </div>
     </div>
   `;
 
-  // B. Inyectar Tabla (Estilo FOA: Producto, IA, Pres, Obs, DosisMaq)
+  // B. Inyectar Tabla (Sin cambios, funciona bien)
   const tbody = $('#printTable tbody'); 
   tbody.innerHTML = '';
   
   d.items.forEach(it => {
     tbody.innerHTML += `
-      <tr style="border-bottom:1px solid #ddd;">
-        <td style="padding:8px; font-weight:bold;">${it.producto}</td>
-        <td style="padding:8px;">${it.ingredienteActivo || '-'}</td>
-        <td style="text-align:center; padding:8px;">${it.presentacion || '-'}</td>
-        <td style="font-size:0.9em; font-style:italic; padding:8px;">${it.obs || ''}</td>
+      <tr style="border-bottom:1px solid #ccc;">
+        <td style="padding:6px; font-weight:bold;">${it.producto}</td>
+        <td style="padding:6px;">${it.ingredienteActivo || '-'}</td>
+        <td style="text-align:center; padding:6px;">${it.presentacion || '-'}</td>
+        <td style="font-size:0.9em; font-style:italic; padding:6px;">${it.obs || ''}</td>
         <td style="text-align:center; font-weight:bold; background:#f0f0f0; border-left:2px solid #000; font-size:1.1em;">${it.dosisMaquinada || '-'}</td>
       </tr>`;
   });
@@ -706,6 +702,7 @@ $('#btnLogout').onclick = async () => {
       $('#btnLogout').style.display='inline-block'; 
   }
 })();
+
 
 
 
