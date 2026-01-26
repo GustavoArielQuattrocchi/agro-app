@@ -520,23 +520,44 @@ $('#btnListado').onclick = () => { $('#modalListado').classList.add('open'); ren
 $('#btnCerrarListado').onclick = () => $('#modalListado').classList.remove('open');
 $('#q').addEventListener('input', renderListado);
 
-// 6. PDF (Actualizado con Tipo de Manejo)
+// 6. PDF (Diseño Profesional Grilla)
 $('#btnPDF').onclick = () => {
   const d = getFormData();
   
   if(!d.finca) return alert('Seleccioná una finca para imprimir.');
 
-  // A. Inyectar Cabecera (Meta Datos)
+  // A. Inyectar Cabecera (Diseño Grilla con CSS incrustado)
   $('#metaBox').innerHTML = `
-    <div><strong>OC:</strong> ${displayOC(d.finca, d.oc)}</div>
-    <div><strong>Fecha:</strong> ${d.fecha.split('-').reverse().join('/')}</div>
-    
-    <div><strong>Finca:</strong> ${d.finca} ${d.cuartel ? `(Cuartel ${d.cuartel})` : ''}</div>
-    <div><strong>Manejo:</strong> ${d.manejo || '-'}</div> <div><strong>Tractor:</strong> ${d.tractor || '-'} ${d.tractorista ? `(${d.tractorista})` : ''}</div>
-    <div><strong>Vol. Maq:</strong> ${d.volumenMaquinaria ? d.volumenMaquinaria + ' L' : '-'}</div>
-    
-    <div><strong>Vol. Aplicación:</strong> ${d.volumenAplicacion ? d.volumenAplicacion + ' L/ha' : '-'}</div>
-    <div><strong>Cultivo:</strong> ${d.cultivo || '-'}</div> `;
+    <style>
+      .print-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 14px; margin-bottom: 15px; }
+      .print-full { grid-column: span 2; background-color: #f1f5f9; border: 1px solid #cbd5e1; padding: 6px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center;}
+      .print-item { border-bottom: 1px solid #eee; padding-bottom: 2px; }
+      .label { font-weight: bold; color: #334155; }
+    </style>
+
+    <div class="print-grid">
+        <div class="print-item"><span class="label">N° OC:</span> ${displayOC(d.finca, d.oc)}</div>
+        <div class="print-item"><span class="label">Fecha:</span> ${d.fecha.split('-').reverse().join('/')}</div>
+
+        <div class="print-item"><span class="label">Finca:</span> ${d.finca}</div>
+        <div class="print-item"><span class="label">Cuartel/Lote:</span> ${d.cuartel || '-'}</div>
+
+        <div class="print-item"><span class="label">Cultivo:</span> ${d.cultivo || '-'}</div>
+        <div class="print-item"><span class="label">Manejo:</span> ${d.manejo || '-'}</div>
+
+        <div class="print-full">
+            <div><span class="label">🚜 Maquinaria:</span> ${d.tractor || d.maquinaria || 'No especificada'}</div>
+            <div><span class="label">👤</span> ${d.tractorista || '-'}</div>
+        </div>
+
+        <div class="print-item"><span class="label">💧 Vol. Tanque:</span> ${d.volumenMaquinaria ? d.volumenMaquinaria + ' L' : '-'}</div>
+        <div class="print-item"><span class="label">🚿 Gasto (L/ha):</span> ${d.volumenAplicacion ? d.volumenAplicacion + ' L/Ha' : '-'}</div>
+        
+        <div class="print-item" style="grid-column: span 2;">
+            <span class="label">📋 Responsable Técnico:</span> ${d.tecnico || '-'}
+        </div>
+    </div>
+  `;
 
   // B. Inyectar Tabla
   const tbody = $('#printTable tbody'); 
@@ -545,18 +566,18 @@ $('#btnPDF').onclick = () => {
   d.items.forEach(it => {
     tbody.innerHTML += `
       <tr>
-        <td>${it.producto}</td>
-        <td>${it.ingredienteActivo || '-'}</td>
+        <td style="padding:4px">${it.producto}</td>
+        <td style="padding:4px">${it.ingredienteActivo || '-'}</td>
         <td style="text-align:center">${it.presentacion || '-'}</td>
-        <td style="text-align:center; font-weight:bold">${it.dosisMaquinada || '-'}</td>
-        <td>${it.obs || ''}</td>
+        <td style="text-align:center">${it.dosisHa || '-'}</td>
+        <td style="text-align:center; font-weight:bold; background:#f8fafc">${it.dosisMaquinada || '-'}</td>
+        <td style="font-size:0.9em; font-style:italic">${it.obs || ''}</td>
       </tr>`;
   });
 
   // C. Inyectar Indicaciones
   const indicacionesDiv = $('#printIndicaciones');
   indicacionesDiv.innerHTML = d.indicaciones ? d.indicaciones : 'Sin indicaciones adicionales.';
-  indicacionesDiv.parentElement.className = 'indicaciones-box';
 
   // D. Imprimir
   window.print();
@@ -632,6 +653,7 @@ $('#btnLogout').onclick = async () => {
       $('#btnLogout').style.display='inline-block'; 
   }
 })();
+
 
 
 
