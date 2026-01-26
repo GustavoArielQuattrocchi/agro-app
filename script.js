@@ -520,33 +520,42 @@ $('#btnListado').onclick = () => { $('#modalListado').classList.add('open'); ren
 $('#btnCerrarListado').onclick = () => $('#modalListado').classList.remove('open');
 $('#q').addEventListener('input', renderListado);
 
-// 6. PDF (Replica Exacta FOA-00008 + Implemento + Ancho Total)
+// 6. PDF (Corrección de Distribución Ancho Completo + Indicaciones duplicadas)
 $('#btnPDF').onclick = () => {
   const d = getFormData();
   
   if(!d.finca) return alert('Seleccioná una finca para imprimir.');
 
-  // A. ACTUALIZAR TÍTULO HTML (Para que coincida con el PDF)
+  // A. CONTROL DEL TÍTULO HTML
   const htmlTitle = $('#printTitle');
   if(htmlTitle) {
       htmlTitle.style.display = 'block';
       htmlTitle.textContent = "ORDEN DE CURA - BODEGA SALENTEIN";
       htmlTitle.style.textAlign = 'center';
-      htmlTitle.style.textDecoration = 'none'; // El PDF no tiene subrayado en el título
+      htmlTitle.style.textDecoration = 'none';
       htmlTitle.style.fontWeight = 'bold';
       htmlTitle.style.fontSize = '24px';
       htmlTitle.style.marginBottom = '20px';
       htmlTitle.style.marginTop = '0px';
+      htmlTitle.style.width = '100%'; // Asegura que el título ocupe todo
   }
 
-  // B. INYECTAR LA ESTRUCTURA DE DATOS
+  // B. INYECTAR GRILLA (FORZANDO EL ANCHO TOTAL)
   $('#metaBox').innerHTML = `
     <style>
-      /* --- GRILLA DE DATOS (Estilo Renglón) --- */
+      /* --- CONTENEDOR PRINCIPAL --- */
+      /* Esto fuerza a que la caja ocupe todo el ancho disponible */
+      #metaBox {
+        width: 100% !important;
+        box-sizing: border-box;
+      }
+
+      /* --- GRILLA DE DATOS --- */
       .foa-grid { 
           display: grid; 
-          grid-template-columns: 1fr 1fr; /* 2 Columnas exactas */
-          gap: 40px; 
+          grid-template-columns: 1fr 1fr; /* Dos columnas del mismo tamaño (50% - 50%) */
+          column-gap: 40px; /* Espacio entre la columna izq y der */
+          width: 100%; /* ¡IMPORTANTE! Ocupar el 100% de la hoja */
           font-family: Arial, Helvetica, sans-serif;
           font-size: 14px;
           margin-bottom: 25px;
@@ -554,20 +563,23 @@ $('#btnPDF').onclick = () => {
 
       .data-row { 
           display: flex; 
-          justify-content: flex-start; /* Alineados a la izquierda */
-          align-items: flex-end; 
-          border-bottom: 1px solid #000; /* Línea negra sólida como en el PDF */
-          padding-bottom: 2px;
-          margin-bottom: 8px; 
+          align-items: flex-end; /* Alinea el texto a la base del renglón */
+          border-bottom: 1px solid #000; /* La línea negra del PDF */
+          padding-bottom: 4px;
+          margin-bottom: 12px; /* Espacio entre renglones */
+          width: 100%;
       }
 
-      /* ETIQUETAS FIJAS (Para que no se muevan) */
+      /* ETIQUETAS (OC, FINCA, ETC.) */
       .lbl { 
           font-weight: 900; 
           text-transform: uppercase; 
           color: #000; 
           font-size: 12px;
-          min-width: 130px; /* Ancho fijo reservado para el título */
+          /* Ancho fijo para que todos los datos arranquen alineados verticalmente */
+          width: 120px; 
+          min-width: 120px;
+          flex-shrink: 0; /* Evita que la etiqueta se aplaste */
       }
 
       /* VALORES */
@@ -577,9 +589,10 @@ $('#btnPDF').onclick = () => {
           font-size: 14px;
           text-align: left;
           width: 100%;
+          padding-left: 10px;
       }
 
-      /* --- TABLA FULL WIDTH (Estilo PDF) --- */
+      /* --- TABLA FULL WIDTH --- */
       #printTable {
           width: 100% !important; 
           border-collapse: collapse;
@@ -587,7 +600,6 @@ $('#btnPDF').onclick = () => {
           margin-top: 10px;
       }
       
-      /* Cabecera de Tabla */
       #printTable thead th {
           text-align: left;
           padding: 8px 5px;
@@ -598,7 +610,6 @@ $('#btnPDF').onclick = () => {
           font-size: 12px;
       }
 
-      /* Celdas */
       #printTable tbody td {
           padding: 8px 5px;
           border-bottom: 1px solid #ccc;
@@ -606,11 +617,11 @@ $('#btnPDF').onclick = () => {
           vertical-align: top;
       }
 
-      /* ANCHOS DE COLUMNA (Ajustados al PDF) */
+      /* ANCHOS DE COLUMNA DE TABLA */
       .col-prod { width: 30%; }
       .col-ia   { width: 20%; }
       .col-pres { width: 10%; }
-      .col-obs  { width: 25%; } /* Obs antes de Dosis */
+      .col-obs  { width: 25%; }
       .col-dosis{ width: 15%; text-align: right; }
       
     </style>
@@ -634,7 +645,7 @@ $('#btnPDF').onclick = () => {
     </div>
   `;
 
-  // C. RECONSTRUIR TABLA COMPLETA (Cabecera + Cuerpo para asegurar anchos)
+  // C. TABLA DE PRODUCTOS
   const tabla = $('#printTable');
   tabla.innerHTML = `
       <thead>
@@ -662,12 +673,17 @@ $('#btnPDF').onclick = () => {
       </tr>`;
   });
 
-  // D. INDICACIONES (Estilo PDF: Texto simple abajo)
+  // D. INDICACIONES (Arreglado el duplicado)
   const indicacionesDiv = $('#printIndicaciones');
+  // Limpiamos estilos previos para evitar conflictos
+  indicacionesDiv.innerHTML = ''; 
   indicacionesDiv.style.marginTop = "20px";
   indicacionesDiv.style.borderTop = "2px solid #000";
   indicacionesDiv.style.paddingTop = "5px";
-  indicacionesDiv.innerHTML = `<strong>Indicaciones:</strong><br>${d.indicaciones ? d.indicaciones : 'Sin indicaciones adicionales.'}`;
+  
+  // Usamos innerText para el contenido para evitar que se duplique si ya había un <strong>
+  const textoIndicaciones = d.indicaciones ? d.indicaciones : 'Sin indicaciones adicionales.';
+  indicacionesDiv.innerHTML = `<strong>Indicaciones:</strong><br>${textoIndicaciones}`;
 
   window.print();
 };
@@ -742,6 +758,13 @@ $('#btnLogout').onclick = async () => {
       $('#btnLogout').style.display='inline-block'; 
   }
 })();
+
+
+
+
+
+
+
 
 
 
