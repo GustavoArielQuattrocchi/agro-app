@@ -520,42 +520,48 @@ $('#btnListado').onclick = () => { $('#modalListado').classList.add('open'); ren
 $('#btnCerrarListado').onclick = () => $('#modalListado').classList.remove('open');
 $('#q').addEventListener('input', renderListado);
 
-// 6. PDF (Diseño Simétrico - Bodega Salentein)
+// 6. PDF (Diseño Final Limpio - Bodega Salentein)
 $('#btnPDF').onclick = () => {
   const d = getFormData();
   
   if(!d.finca) return alert('Seleccioná una finca para imprimir.');
 
-  // A. Inyectar Cabecera (Simetría 5x5)
+  // A. Inyectar Cabecera
   $('#metaBox').innerHTML = `
     <style>
+      /* Título Principal (Afuera de la grilla) */
       .salentein-title {
           text-align: center;
-          font-size: 20px;
+          font-size: 22px;
           font-weight: bold;
           text-transform: uppercase;
           text-decoration: underline;
-          margin-bottom: 25px;
+          margin-bottom: 30px;
           font-family: Arial, sans-serif;
       }
+      
+      /* Grilla de 2 columnas */
       .foa-grid { 
           display: grid; 
-          grid-template-columns: 1fr 1fr; /* 2 Columnas idénticas */
-          gap: 50px; /* Buen espacio al medio */
+          grid-template-columns: 1fr 1fr; /* Mitad y mitad */
+          gap: 60px; /* Separación amplia en el centro */
           font-family: Arial, sans-serif;
           font-size: 13px;
           margin-bottom: 20px;
       }
+
+      /* Cada fila de datos */
       .data-row { 
           display: flex; 
-          justify-content: space-between; 
-          border-bottom: 1px solid #aaa; /* Línea divisoria fina */
-          padding-bottom: 3px;
-          margin-bottom: 8px;
+          justify-content: space-between; /* Etiqueta a la izq, Valor a la der */
+          border-bottom: 1px solid #999; /* Línea de renglón */
+          padding-bottom: 4px;
+          margin-bottom: 12px; /* Espacio vertical entre renglones */
           align-items: flex-end;
       }
-      .lbl { font-weight: 900; text-transform: uppercase; color: #000; }
-      .val { font-weight: 600; color: #333; text-align: right; }
+
+      .lbl { font-weight: 900; text-transform: uppercase; color: #000; font-size: 11px; }
+      .val { font-weight: 600; color: #222; text-align: right; font-size: 14px; }
     </style>
 
     <div class="salentein-title">ORDEN DE CURA - BODEGA SALENTEIN</div>
@@ -579,7 +585,7 @@ $('#btnPDF').onclick = () => {
                 <span class="val">${d.tractor || '-'}</span>
             </div>
             <div class="data-row">
-                <span class="lbl">IMPLEMENTO:</span> 
+                <span class="lbl" style="background:#eee; padding:0 3px;">IMPLEMENTO:</span> 
                 <span class="val">${d.maquinaria || '-'}</span>
             </div>
         </div>
@@ -609,17 +615,17 @@ $('#btnPDF').onclick = () => {
     </div>
   `;
 
-  // B. Inyectar Tabla (Sin cambios, funciona bien)
+  // B. Inyectar Tabla
   const tbody = $('#printTable tbody'); 
   tbody.innerHTML = '';
   
   d.items.forEach(it => {
     tbody.innerHTML += `
       <tr style="border-bottom:1px solid #ccc;">
-        <td style="padding:6px; font-weight:bold;">${it.producto}</td>
-        <td style="padding:6px;">${it.ingredienteActivo || '-'}</td>
-        <td style="text-align:center; padding:6px;">${it.presentacion || '-'}</td>
-        <td style="font-size:0.9em; font-style:italic; padding:6px;">${it.obs || ''}</td>
+        <td style="padding:8px; font-weight:bold;">${it.producto}</td>
+        <td style="padding:8px;">${it.ingredienteActivo || '-'}</td>
+        <td style="text-align:center; padding:8px;">${it.presentacion || '-'}</td>
+        <td style="font-size:0.9em; font-style:italic; padding:8px;">${it.obs || ''}</td>
         <td style="text-align:center; font-weight:bold; background:#f0f0f0; border-left:2px solid #000; font-size:1.1em;">${it.dosisMaquinada || '-'}</td>
       </tr>`;
   });
@@ -702,6 +708,7 @@ $('#btnLogout').onclick = async () => {
       $('#btnLogout').style.display='inline-block'; 
   }
 })();
+
 
 
 
